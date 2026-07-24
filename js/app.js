@@ -933,10 +933,9 @@
     btn.disabled = true;
     btn.textContent = "Création…";
     try {
-      const code = await Sync.createSpace();
+      const code = await Sync.createSpace(buildDoc()); // crée avec l'état initial
       state.syncCode = code;
       saveState();
-      await Sync.push(code, buildDoc()); // dépose l'état initial
       updateSyncUI();
       startPolling();
       toast("Espace créé ✓ Partage ton code 💕");

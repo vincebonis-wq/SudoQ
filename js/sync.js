@@ -1,33 +1,50 @@
 /* =========================================================================
  * SudoQ — Synchronisation cloud (gratuite, sans compte)
  *
- * Fournisseur : kvdb.io — stockage clé/valeur gratuit, sans inscription,
- * utilisable directement depuis le navigateur (CORS activé).
+ * Fournisseur : jsonblob.com — stockage JSON gratuit, sans inscription,
+ * conçu pour être utilisé directement depuis le navigateur (CORS activé).
  *
- * Principe : on crée un "bucket" (= espace de couple). Son identifiant est le
+ * Principe : on crée un "blob" (= espace de couple). Son identifiant est le
  * "code de couple" que les deux joueurs partagent. Les records y sont stockés
- * sous une clé unique, puis fusionnés localement (on garde le meilleur temps).
+ * puis fusionnés localement (on garde le meilleur temps).
  *
- * Pour changer de fournisseur, il suffit de réécrire createSpace / pull / push.
+ * Tout est isolé ici : pour changer de fournisseur, réécrire createSpace /
+ * pull / push / check (4 fonctions).
  * ========================================================================= */
 (function () {
   "use strict";
 
-  const BASE = "https://kvdb.io";
-  const KEY = "sudoq"; // nom de la clé dans le bucket
+  const API = "https://jsonblob.com/api/jsonBlob";
 
-  // Crée un nouvel espace et renvoie son code (identifiant de bucket).
-  async function createSpace() {
-    const res = await fetch(BASE + "/", { method: "POST" });
+  // Extrait l'identifiant du blob depuis l'en-tête Location (URL absolue ou relative).
+  function idFromLocation(loc) {
+    if (!loc) return null;
+    const parts = loc.split("/").filter(Boolean);
+    return parts[parts.length - 1] || null;
+  }
+
+  // Crée un nouvel espace et renvoie son code (identifiant de blob).
+  async function createSpace(initialDoc) {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(initialDoc || { app: "SudoQ", records: {} }),
+    });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    const id = (await res.text()).trim();
-    if (!id || id.length < 6) throw new Error("Identifiant invalide");
+    // L'id est renvoyé dans l'en-tête Location (jsonblob expose cet en-tête en CORS).
+    let id = idFromLocation(res.headers.get("Location"));
+    if (!id) id = idFromLocation(res.headers.get("X-jsonblob"));
+    if (!id) throw new Error("Identifiant de l'espace introuvable");
     return id;
   }
 
-  // Récupère le document distant (ou null s'il n'existe pas encore).
+  // Récupère le document distant (ou null s'il n'existe pas / est vide).
   async function pull(code) {
-    const res = await fetch(`${BASE}/${encodeURIComponent(code)}/${KEY}`, {
+    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
     if (res.status === 404) return null;
@@ -41,11 +58,14 @@
     }
   }
 
-  // Écrit le document distant.
+  // Écrit (remplace) le document distant.
   async function push(code, doc) {
-    const res = await fetch(`${BASE}/${encodeURIComponent(code)}/${KEY}`, {
+    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
       method: "PUT",
-      headers: { "Content-Type": "text/plain" },
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
       body: JSON.stringify(doc),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
@@ -54,11 +74,12 @@
 
   // Vérifie qu'un code existe / est joignable (pour "Rejoindre").
   async function check(code) {
-    const res = await fetch(`${BASE}/${encodeURIComponent(code)}/${KEY}`, {
+    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
+      headers: { Accept: "application/json" },
       cache: "no-store",
     });
-    return res.ok || res.status === 404; // 404 = espace valide mais encore vide
+    return res.ok;
   }
 
-  window.Sync = { createSpace, pull, push, check, provider: "kvdb.io" };
+  window.Sync = { createSpace, pull, push, check, provider: "jsonblob.com" };
 })();

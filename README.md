@@ -52,7 +52,7 @@ Vous pouvez alors y jouer chacun depuis votre téléphone.
 
 Les scores se synchronisent **automatiquement entre vos deux téléphones**, via
 un petit stockage cloud gratuit et **sans aucun compte à créer**
-([kvdb.io](https://kvdb.io)). Un « code de couple » unique relie vos deux
+([jsonblob.com](https://jsonblob.com)). Un « code de couple » unique relie vos deux
 appareils.
 
 ### Mise en route (une seule fois)
@@ -81,7 +81,7 @@ l'app et toutes les 20 s).
 
 ### Bon à savoir
 
-- Le stockage `kvdb.io` est gratuit et sans compte ; c'est un service tiers
+- Le stockage `jsonblob.com` est gratuit et sans compte ; c'est un service tiers
   léger. Si un jour il ne répondait pas, la synchro se met en pause (l'app
   affiche « sauvegarde locale active ») sans jamais bloquer le jeu.
 - Pour changer de fournisseur cloud, tout est isolé dans **`js/sync.js`**
@@ -93,7 +93,7 @@ l'app et toutes les 20 s).
 index.html        Structure de l'app
 css/styles.css    Styles (thèmes clair/sombre, responsive)
 js/sudoku.js      Moteur : générateur déterministe + solveur (unicité garantie)
-js/sync.js        Synchro cloud gratuite sans compte (espace de couple, kvdb.io)
+js/sync.js        Synchro cloud gratuite sans compte (espace de couple, jsonblob.com)
 js/app.js         Logique : niveaux, chrono, notes, records, profils, synchro
 scores.json       Modèle de fichier de scores (sauvegarde/export manuel)
 ```
