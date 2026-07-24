@@ -792,6 +792,8 @@
     // Synchro / espace de couple
     const openSync = () => {
       updateSyncUI();
+      const prov = window.Sync ? window.Sync.provider : "aucun";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v2";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
