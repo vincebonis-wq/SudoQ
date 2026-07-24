@@ -178,10 +178,10 @@ const LEVELS = [
 }));
 
 const BAND_META = {
-  Facile: { color: "#34d399", emoji: "🌱" },
-  Moyen: { color: "#60a5fa", emoji: "🌊" },
-  Difficile: { color: "#f59e0b", emoji: "🔥" },
-  "Très difficile": { color: "#f43f5e", emoji: "💀" },
+  Facile: { color: "#34d399", ink: "#059669", emoji: "🌱" },
+  Moyen: { color: "#60a5fa", ink: "#2563eb", emoji: "🌊" },
+  Difficile: { color: "#f59e0b", ink: "#d97706", emoji: "🔥" },
+  "Très difficile": { color: "#f43f5e", ink: "#e11d48", emoji: "💀" },
 };
 
 // Cache des puzzles générés (génération à la demande, potentiellement lente).

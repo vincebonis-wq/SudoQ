@@ -143,6 +143,7 @@
       const card = document.createElement("button");
       card.className = "level-card" + (unlocked ? "" : " locked");
       card.style.setProperty("--band-color", meta.color);
+      card.style.setProperty("--band-ink", meta.ink || meta.color);
       card.innerHTML = `
         <span class="band-strip"></span>
         ${unlocked ? "" : '<span class="lv-lock">🔒</span>'}
@@ -822,7 +823,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v3";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v4";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
