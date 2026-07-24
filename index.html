@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0f172a" />
+    <title>SudoQ · Sudoku à deux</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- ============ EN-TÊTE ============ -->
+      <header class="topbar">
+        <button class="icon-btn" id="btn-home" title="Accueil" aria-label="Accueil">
+          <span class="brand-mark">🧩</span>
+          <span class="brand-name">Sudo<span>Q</span></span>
+        </button>
+        <div class="topbar-right">
+          <div class="player-switch" id="player-switch"></div>
+          <button class="icon-btn ghost" id="btn-theme" title="Thème clair/sombre" aria-label="Thème">🌙</button>
+        </div>
+      </header>
+
+      <!-- ============ ÉCRAN : NIVEAUX ============ -->
+      <main class="screen active" id="screen-levels">
+        <div class="hero">
+          <h1 class="hero-title">Choisis ton défi</h1>
+          <p class="hero-sub">15 niveaux, du plus doux au plus redoutable. Chaque grille est identique pour vous deux — que le meilleur gagne&nbsp;!</p>
+        </div>
+        <div class="level-grid" id="level-grid"></div>
+        <div class="home-actions">
+          <button class="btn btn-outline" id="btn-scoreboard">🏆 Tableau des records</button>
+        </div>
+      </main>
+
+      <!-- ============ ÉCRAN : JEU ============ -->
+      <main class="screen" id="screen-game">
+        <div class="game-topline">
+          <button class="btn btn-ghost" id="btn-back">‹ Niveaux</button>
+          <div class="game-info">
+            <span class="chip" id="game-level-chip">Niveau 1</span>
+            <span class="timer" id="timer">00:00</span>
+          </div>
+          <button class="btn btn-ghost" id="btn-pause" title="Pause">⏸</button>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="board"></div>
+          <div class="board-overlay" id="board-overlay" hidden>
+            <div class="overlay-card">
+              <p id="overlay-text">En pause</p>
+              <button class="btn btn-primary" id="btn-resume">Reprendre</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="numpad" id="numpad"></div>
+          <div class="tools">
+            <button class="tool" id="btn-pencil" title="Mode notes / crayon">
+              <span class="tool-ico">✏️</span><span class="tool-label">Notes</span>
+              <span class="tool-state" id="pencil-state">OFF</span>
+            </button>
+            <button class="tool" id="btn-erase" title="Effacer">
+              <span class="tool-ico">⌫</span><span class="tool-label">Effacer</span>
+            </button>
+            <button class="tool" id="btn-hint" title="Indice">
+              <span class="tool-ico">💡</span><span class="tool-label">Indice</span>
+            </button>
+            <button class="tool" id="btn-check" title="Vérifier">
+              <span class="tool-ico">✓</span><span class="tool-label">Vérifier</span>
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <!-- ============ ÉCRAN : RECORDS ============ -->
+      <main class="screen" id="screen-scoreboard">
+        <div class="hero">
+          <h1 class="hero-title">🏆 Vos records</h1>
+          <p class="hero-sub">Meilleur temps par niveau. Le vainqueur de chaque duel est mis en avant.</p>
+        </div>
+        <div class="versus" id="versus"></div>
+        <div class="score-table-wrap">
+          <table class="score-table" id="score-table"></table>
+        </div>
+        <div class="home-actions data-actions">
+          <button class="btn btn-outline" id="btn-export">⬇️ Exporter (JSON)</button>
+          <label class="btn btn-outline" for="import-file">⬆️ Importer</label>
+          <input type="file" id="import-file" accept="application/json" hidden />
+          <button class="btn btn-ghost danger" id="btn-reset">🗑 Réinitialiser</button>
+        </div>
+        <div class="home-actions">
+          <button class="btn btn-ghost" id="btn-back-home">‹ Retour aux niveaux</button>
+        </div>
+      </main>
+    </div>
+
+    <!-- ============ MODALE : VICTOIRE ============ -->
+    <div class="modal-backdrop" id="win-modal" hidden>
+      <div class="modal win-card">
+        <div class="confetti" id="confetti"></div>
+        <div class="win-emoji">🎉</div>
+        <h2 id="win-title">Grille résolue&nbsp;!</h2>
+        <p class="win-time" id="win-time">00:00</p>
+        <p class="win-msg" id="win-msg"></p>
+        <div class="win-compare" id="win-compare"></div>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btn-next-level">Niveau suivant ›</button>
+          <button class="btn btn-outline" id="btn-replay">Rejouer</button>
+          <button class="btn btn-ghost" id="btn-to-levels">Niveaux</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ MODALE : ÉDITION DES PROFILS ============ -->
+    <div class="modal-backdrop" id="players-modal" hidden>
+      <div class="modal">
+        <h2>Vos profils</h2>
+        <p class="modal-sub">Personnalise les deux joueurs.</p>
+        <label class="field">
+          <span>Joueur 1</span>
+          <input type="text" id="p1-name" maxlength="14" />
+        </label>
+        <label class="field">
+          <span>Joueur 2</span>
+          <input type="text" id="p2-name" maxlength="14" />
+        </label>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="btn-save-players">Enregistrer</button>
+          <button class="btn btn-ghost" id="btn-cancel-players">Annuler</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="js/sudoku.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

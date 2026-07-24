@@ -1,0 +1,7 @@
+{
+  "app": "SudoQ",
+  "note": "Modèle de fichier de scores partagé. Exportez depuis l'app (écran Records) pour remplacer ce fichier, commitez-le, et chacun peut l'importer pour se synchroniser.",
+  "players": ["Vince", "Ma copine"],
+  "unlocked": 1,
+  "records": {}
+}
