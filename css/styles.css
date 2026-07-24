@@ -158,6 +158,42 @@ body {
 }
 .hero-sub { color: var(--text-dim); margin-top: 10px; font-size: 14.5px; line-height: 1.5; }
 
+/* ---------- Synchro / espace de couple ---------- */
+.sync-dot { font-size: 12px; line-height: 1; }
+.sync-dot.off { color: #64748b; }
+.sync-dot.ok { color: #34d399; filter: drop-shadow(0 0 4px rgba(52,211,153,.7)); }
+.sync-dot.syncing { color: #fbbf24; animation: pulse 1s infinite; }
+.sync-dot.error { color: #f43f5e; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+
+.sync-banner {
+  display: flex; align-items: center; gap: 12px;
+  background: linear-gradient(135deg, rgba(124,58,237,.18), rgba(236,72,153,.18));
+  border: 1px solid rgba(124,58,237,.35);
+  border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 18px;
+}
+.sync-banner-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sync-banner-txt strong { font-size: 14px; }
+.sync-banner-txt span { font-size: 12px; color: var(--text-dim); }
+.sync-banner .btn { padding: 9px 16px; white-space: nowrap; }
+
+.or { display: flex; align-items: center; text-align: center; color: var(--text-dim); margin: 16px 0; font-size: 12px; }
+.or::before, .or::after { content: ""; flex: 1; height: 1px; background: rgba(148,163,184,.25); }
+.or span { padding: 0 12px; }
+
+.code-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+.code-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface-2); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px;
+}
+.code-box code {
+  flex: 1; font-family: ui-monospace, monospace; font-size: 15px; font-weight: 600;
+  color: var(--accent-2); word-break: break-all; text-align: left; letter-spacing: .5px;
+}
+.code-box button { border: none; background: none; cursor: pointer; font-size: 18px; padding: 4px; }
+.hint { font-size: 12px; color: var(--text-dim); line-height: 1.5; margin-bottom: 16px; text-align: left; }
+
 /* ---------- Grille de niveaux ---------- */
 .level-grid {
   display: grid;

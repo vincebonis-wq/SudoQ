@@ -13,6 +13,7 @@
     currentPlayer: 0,
     unlocked: 1, // nombre de niveaux débloqués (le 1er est toujours dispo)
     theme: "dark",
+    syncCode: null, // code de l'espace de couple (kvdb bucket)
     // records[levelIndex] = { "0": tempsSecondes, "1": tempsSecondes }
     records: {},
   };
@@ -441,6 +442,13 @@
     renderLevels();
 
     showWinModal(time, isNewRecord, prevBest);
+
+    // Sauvegarde cloud + récupère l'éventuel record adverse pour le comparatif.
+    if (state.syncCode) {
+      cloudSync(true).then(() => {
+        if (!$("#win-modal").hidden) renderWinCompare(lvl.index, time);
+      });
+    }
   }
 
   function showWinModal(time, isNewRecord, prevBest) {
@@ -683,6 +691,7 @@
     renderLevels();
     renderScoreboard();
     toast("Profils enregistrés ✓");
+    if (state.syncCode) cloudSync(true);
   }
 
   /* ============================================================
@@ -780,6 +789,19 @@
     $("#btn-save-players").onclick = savePlayers;
     $("#btn-cancel-players").onclick = () => ($("#players-modal").hidden = true);
 
+    // Synchro / espace de couple
+    const openSync = () => {
+      updateSyncUI();
+      $("#sync-modal").hidden = false;
+    };
+    $("#btn-sync").onclick = openSync;
+    $("#btn-open-sync").onclick = openSync;
+    $("#btn-close-sync").onclick = () => ($("#sync-modal").hidden = true);
+    $("#btn-create-space").onclick = createSpace;
+    $("#btn-join-space").onclick = joinSpace;
+    $("#btn-leave-space").onclick = leaveSpace;
+    $("#btn-copy-code").onclick = copyCode;
+
     // Données
     $("#btn-export").onclick = exportData;
     $("#import-file").onchange = (e) => {
@@ -787,17 +809,191 @@
       e.target.value = "";
     };
     $("#btn-reset").onclick = () => {
-      if (confirm("Effacer TOUS les records et la progression ? Cette action est irréversible.")) {
+      if (
+        confirm(
+          "Effacer TOUS les records et la progression sur ce téléphone ?\n\n" +
+            "Cela vous déconnecte aussi de l'espace de couple (les records déjà " +
+            "synchronisés restent dans le cloud et chez ta copine)."
+        )
+      ) {
         state = { ...defaultState, records: {}, players: state.players, theme: state.theme };
         saveState();
+        stopPolling();
         renderPlayerSwitch();
         renderLevels();
         renderScoreboard();
-        toast("Tout a été réinitialisé");
+        updateSyncUI();
+        toast("Réinitialisé et déconnecté de l'espace");
       }
     };
 
     document.addEventListener("keydown", handleKey);
+  }
+
+  /* ============================================================
+   * SYNCHRONISATION CLOUD (espace de couple)
+   * ============================================================ */
+  let pollId = null;
+  let lastSyncError = false;
+
+  function setSyncDot(status) {
+    const dot = $("#sync-dot");
+    dot.className = "sync-dot " + status; // off | ok | syncing | error
+    const titles = {
+      off: "Synchro désactivée",
+      ok: "Synchro active ✓",
+      syncing: "Synchronisation…",
+      error: "Synchro indisponible (sauvegarde locale active)",
+    };
+    $("#btn-sync").title = titles[status] || "";
+  }
+
+  function updateSyncUI() {
+    const connected = !!state.syncCode;
+    $("#sync-banner").hidden = connected;
+    $("#sync-disconnected").hidden = connected;
+    $("#sync-connected").hidden = !connected;
+    if (connected) $("#space-code").textContent = state.syncCode;
+    setSyncDot(connected ? "ok" : "off");
+  }
+
+  function buildDoc() {
+    return {
+      app: "SudoQ",
+      players: state.players,
+      records: state.records,
+      unlocked: state.unlocked,
+      updatedAt: Date.now(),
+    };
+  }
+
+  // Fusionne un document distant dans l'état local (on garde le meilleur temps).
+  function mergeRemote(remote) {
+    if (!remote || typeof remote !== "object") return;
+    if (remote.records) {
+      Object.keys(remote.records).forEach((lvl) => {
+        const inc = remote.records[lvl];
+        if (!inc) return;
+        if (!state.records[lvl]) state.records[lvl] = {};
+        [0, 1].forEach((pi) => {
+          const v = inc[pi];
+          if (v == null) return;
+          const cur = state.records[lvl][pi];
+          if (cur == null || v < cur) state.records[lvl][pi] = v;
+        });
+      });
+    }
+    // Les noms sont partagés par l'espace : on adopte ceux du cloud.
+    if (Array.isArray(remote.players) && remote.players.length === 2) {
+      state.players = remote.players;
+    }
+    recomputeUnlocked();
+  }
+
+  // pull (+ éventuellement push après fusion). Silencieux : n'interrompt pas le jeu.
+  async function cloudSync(pushAfter) {
+    if (!state.syncCode || !window.Sync) return;
+    setSyncDot("syncing");
+    try {
+      const remote = await Sync.pull(state.syncCode);
+      mergeRemote(remote);
+      saveState();
+      renderPlayerSwitch();
+      renderLevels();
+      if (screens.scoreboard.classList.contains("active")) renderScoreboard();
+      if (pushAfter) {
+        await Sync.push(state.syncCode, buildDoc());
+      }
+      setSyncDot("ok");
+      lastSyncError = false;
+    } catch (e) {
+      setSyncDot("error");
+      if (!lastSyncError) {
+        toast("Synchro indisponible — sauvegarde locale active 💾");
+        lastSyncError = true;
+      }
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    if (!state.syncCode) return;
+    pollId = setInterval(() => {
+      if (document.visibilityState === "visible") cloudSync(false);
+    }, 20000);
+  }
+  function stopPolling() {
+    if (pollId) clearInterval(pollId);
+    pollId = null;
+  }
+
+  async function createSpace() {
+    if (!window.Sync) return;
+    const btn = $("#btn-create-space");
+    btn.disabled = true;
+    btn.textContent = "Création…";
+    try {
+      const code = await Sync.createSpace();
+      state.syncCode = code;
+      saveState();
+      await Sync.push(code, buildDoc()); // dépose l'état initial
+      updateSyncUI();
+      startPolling();
+      toast("Espace créé ✓ Partage ton code 💕");
+    } catch (e) {
+      toast("Impossible de créer l'espace (réseau). Réessaie.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "✨ Créer notre espace";
+    }
+  }
+
+  async function joinSpace() {
+    if (!window.Sync) return;
+    const code = $("#join-code").value.trim();
+    if (!code) {
+      toast("Colle d'abord le code reçu");
+      return;
+    }
+    const btn = $("#btn-join-space");
+    btn.disabled = true;
+    btn.textContent = "Connexion…";
+    try {
+      const ok = await Sync.check(code);
+      if (!ok) throw new Error("introuvable");
+      state.syncCode = code;
+      saveState();
+      await cloudSync(true); // récupère les données existantes et pousse les nôtres
+      updateSyncUI();
+      startPolling();
+      toast("Espace rejoint ✓ Records synchronisés 💕");
+    } catch (e) {
+      toast("Code invalide ou réseau indisponible");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Rejoindre l'espace";
+    }
+  }
+
+  function leaveSpace() {
+    if (!confirm("Se déconnecter de l'espace ? Tes records restent sauvegardés sur ce téléphone.")) return;
+    state.syncCode = null;
+    saveState();
+    stopPolling();
+    updateSyncUI();
+    toast("Déconnecté de l'espace (données locales conservées)");
+  }
+
+  function copyCode() {
+    const code = state.syncCode || "";
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(
+        () => toast("Code copié ✓"),
+        () => toast("Copie impossible — sélectionne le code manuellement")
+      );
+    } else {
+      toast("Sélectionne le code pour le copier");
+    }
   }
 
   /* ============================================================
@@ -809,6 +1005,14 @@
     renderPlayerSwitch();
     renderLevels();
     bindEvents();
+    updateSyncUI();
+    if (state.syncCode) {
+      cloudSync(false);
+      startPolling();
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && state.syncCode) cloudSync(false);
+    });
   }
 
   init();

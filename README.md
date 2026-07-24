@@ -16,6 +16,8 @@ vos records**.
 - **Deux profils** personnalisables (toi & ta copine) avec un sélecteur en haut
 - **Tableau des records** : meilleur temps par niveau, vainqueur mis en avant,
   décompte des niveaux gagnés (couronne 👑 au leader)
+- **Synchro automatique entre vos deux téléphones** 💕 via un « code de couple »
+  (stockage cloud gratuit, **sans compte** — voir plus bas)
 - **Saisie tactile** : on clique sur une case, puis sur un chiffre (1-9)
 - **Mode notes / crayon ✏️** : place les petits chiffres candidats dans les cases
 - **Confort de jeu** : surbrillance ligne/colonne/bloc, chiffres identiques,
@@ -46,24 +48,44 @@ python3 -m http.server 8000
 
 Vous pouvez alors y jouer chacun depuis votre téléphone.
 
-## 🏆 Partager les records entre vous deux
+## 🏆 Synchroniser vos records (espace de couple)
 
-Les scores sont sauvegardés **dans le navigateur** (localStorage).
+Les scores se synchronisent **automatiquement entre vos deux téléphones**, via
+un petit stockage cloud gratuit et **sans aucun compte à créer**
+([kvdb.io](https://kvdb.io)). Un « code de couple » unique relie vos deux
+appareils.
 
-- **Même appareil / même navigateur** : rien à faire, les deux profils partagent
-  automatiquement le tableau des records.
-- **Deux appareils différents** : dans l'écran 🏆 _Records_ :
-  - **⬇️ Exporter** génère un fichier `sudoq-scores.json`
-  - **⬆️ Importer** fusionne un fichier reçu (on garde toujours le meilleur
-    temps de chacun)
+### Mise en route (une seule fois)
 
-### Astuce « stockage sur GitHub »
+1. Sur **ton** téléphone : bouton 💕 (en haut) → **Créer notre espace**
+2. Un **code de couple** s'affiche → **copie-le** et envoie-le à ta copine
+3. Sur **son** téléphone : bouton 💕 → colle le code → **Rejoindre l'espace**
 
-Pour garder un historique commun versionné, déposez le `sudoq-scores.json`
-exporté dans ce dépôt (par ex. en le renommant `scores.json` et en le
-commitant). Chacun peut le télécharger depuis GitHub puis l'**Importer** dans
-l'app pour se synchroniser. C'est une synchro manuelle simple et sans serveur —
-une vraie synchro automatique nécessiterait un backend ou un jeton d'accès.
+C'est tout ! Ensuite, chaque record est envoyé et récupéré automatiquement :
+la pastille en haut passe au **vert 🟢** quand la synchro est active, et le
+tableau des records se met à jour tout seul (rafraîchissement à l'ouverture de
+l'app et toutes les 20 s).
+
+> Chacun choisit **qui il est** (toi / ta copine) avec le sélecteur en haut à
+> gauche. Les meilleurs temps sont toujours **fusionnés** : on garde le
+> meilleur des deux, aucune donnée n'est écrasée.
+
+### Filets de sécurité
+
+- Tout est **aussi sauvegardé en local** sur chaque téléphone (localStorage) :
+  même hors-ligne, ou si le cloud est momentanément indisponible, tu continues
+  de jouer et tes records repartent à la synchro suivante.
+- Dans l'écran 🏆 _Records_, tu peux **⬇️ Exporter** / **⬆️ Importer** un
+  fichier `sudoq-scores.json` (sauvegarde manuelle, ou pour archiver un
+  historique commun dans ce dépôt GitHub).
+
+### Bon à savoir
+
+- Le stockage `kvdb.io` est gratuit et sans compte ; c'est un service tiers
+  léger. Si un jour il ne répondait pas, la synchro se met en pause (l'app
+  affiche « sauvegarde locale active ») sans jamais bloquer le jeu.
+- Pour changer de fournisseur cloud, tout est isolé dans **`js/sync.js`**
+  (3 fonctions : `createSpace`, `pull`, `push`).
 
 ## 🗂 Structure
 
@@ -71,8 +93,9 @@ une vraie synchro automatique nécessiterait un backend ou un jeton d'accès.
 index.html        Structure de l'app
 css/styles.css    Styles (thèmes clair/sombre, responsive)
 js/sudoku.js      Moteur : générateur déterministe + solveur (unicité garantie)
-js/app.js         Logique : niveaux, chrono, notes, records, profils, import/export
-scores.json       Modèle de fichier de scores (pour le partage via GitHub)
+js/sync.js        Synchro cloud gratuite sans compte (espace de couple, kvdb.io)
+js/app.js         Logique : niveaux, chrono, notes, records, profils, synchro
+scores.json       Modèle de fichier de scores (sauvegarde/export manuel)
 ```
 
 ## 🔧 Ajuster la difficulté
