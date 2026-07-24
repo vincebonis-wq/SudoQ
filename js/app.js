@@ -87,19 +87,21 @@
     "Ta moitié dort ? Parfait, creuse l'écart. 😈",
   ];
 
+  let lastMotivation = "";
   function showRandomMotivation() {
+    lastMotivation = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
     const el = $("#hero-sub");
-    if (!el) return;
-    el.textContent = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
+    if (el) el.textContent = lastMotivation;
+    return lastMotivation;
   }
 
   let toastTimer = null;
-  function toast(msg) {
+  function toast(msg, duration) {
     const el = $("#toast");
     el.textContent = msg;
     el.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (el.hidden = true), 2200);
+    toastTimer = setTimeout(() => (el.hidden = true), duration || 2200);
   }
 
   /* ============================================================
@@ -823,7 +825,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v4";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v5";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -1038,6 +1040,10 @@
     renderLevels();
     bindEvents();
     updateSyncUI();
+    // Message de motivation en bulle à l'ouverture (en plus du sous-titre).
+    setTimeout(() => {
+      if (screens.levels.classList.contains("active")) toast(lastMotivation, 4500);
+    }, 700);
     if (state.syncCode) {
       cloudSync(false);
       startPolling();
