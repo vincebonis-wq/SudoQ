@@ -48,7 +48,25 @@ body.light {
 /* L'attribut `hidden` doit toujours l'emporter sur les display: flex des overlays */
 [hidden] { display: none !important; }
 
+/* Empêche la sélection de texte / le menu d'appui long (bandes de surbrillance
+   translucides sur mobile). L'interface d'un jeu ne doit pas être sélectionnable. */
+#app, .modal-backdrop, .toast {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* ...sauf les champs de saisie et le code de couple (qu'on veut pouvoir copier). */
+input, textarea, #space-code, .code-box code {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 html, body { height: 100%; }
+
+/* Neutralise l'effet de rebond/étirement du défilement (overscroll) qui, sur
+   certains téléphones (MIUI/Xiaomi), teinte l'écran d'une bande translucide. */
+html, body { overscroll-behavior: none; }
+#app { overscroll-behavior: contain; }
 
 body {
   font-family: var(--font);
@@ -249,6 +267,9 @@ body {
   position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
   background: var(--band-color);
 }
+
+.top-nav { display: flex; justify-content: center; margin-bottom: 18px; }
+.top-nav .btn { width: 100%; max-width: 340px; }
 
 .home-actions { display: flex; justify-content: center; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
 .data-actions { margin-top: 20px; }

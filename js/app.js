@@ -50,6 +50,7 @@
   function showScreen(name) {
     Object.values(screens).forEach((s) => s.classList.remove("active"));
     screens[name].classList.add("active");
+    if (name === "levels") showRandomMotivation();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -63,6 +64,34 @@
     return (name || "?").trim().charAt(0).toUpperCase() || "?";
   }
   const AVATAR_COLORS = ["#7c3aed", "#ec4899"];
+
+  // Messages de motivation humoristiques, tirés au hasard à chaque ouverture.
+  const MOTIVATION = [
+    "Un cerveau, ça se muscle. Les excuses aussi, apparemment. 🧠",
+    "9 chiffres, 81 cases, 0 pitié. Bon courage. 🎯",
+    "Pendant que tu lis ça, l'autre s'entraîne déjà. ⏱️",
+    "Rappelle-toi : perdre, c'est juste gagner à l'envers. 🙃",
+    "Le sudoku ne ment pas. Ton chrono non plus. 😏",
+    "Aujourd'hui : champion·ne du monde. Demain : on verra. 🏆",
+    "Respire. Concentre-toi. Écrase l'adversaire. 🔥",
+    "Ce n'est pas de la triche, c'est de la logique. Nuance. 🕵️",
+    "Les légendes commencent toujours par un niveau facile. 🌱",
+    "Ton amour-propre est en jeu. Aucune pression. 😅",
+    "Un sudoku par jour, et l'ego au beau fixe. ✨",
+    "Attention : risque élevé de victoire. Ou pas. 🎲",
+    "La logique est ton arme, la vitesse ta signature. ⚡",
+    "Petit rappel amical : t'es capable. Même sur le niveau 15. 💪",
+    "Chaque case remplie te rapproche de la gloire (et du canapé). 🛋️",
+    "Que le meilleur gagne. (Spoiler : c'est toi. Peut-être.) 🤞",
+    "Moins de blabla, plus de chiffres. Allez hop ! 🚀",
+    "Ta moitié dort ? Parfait, creuse l'écart. 😈",
+  ];
+
+  function showRandomMotivation() {
+    const el = $("#hero-sub");
+    if (!el) return;
+    el.textContent = MOTIVATION[Math.floor(Math.random() * MOTIVATION.length)];
+  }
 
   let toastTimer = null;
   function toast(msg) {
@@ -793,7 +822,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v2";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v3";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -1003,6 +1032,7 @@
   function init() {
     applyTheme();
     buildNumpad();
+    showRandomMotivation();
     renderPlayerSwitch();
     renderLevels();
     bindEvents();
