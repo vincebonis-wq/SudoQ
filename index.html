@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css?v=5" />
+    <link rel="stylesheet" href="css/styles.css?v=6" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
@@ -41,7 +41,8 @@
           <p class="hero-sub" id="hero-sub">15 niveaux, du plus doux au plus redoutable. Chaque grille est identique pour vous deux — que le meilleur gagne&nbsp;!</p>
         </div>
         <div class="top-nav">
-          <button class="btn btn-primary" id="btn-scoreboard">🏆 Tableau des records</button>
+          <button class="btn btn-primary" id="btn-scoreboard">🏆 Records</button>
+          <button class="btn btn-outline" id="btn-chat">💬 Messages<span class="badge" id="chat-badge" hidden></span></button>
         </div>
         <div class="sync-banner" id="sync-banner" hidden>
           <div class="sync-banner-txt">
@@ -112,6 +113,22 @@
         </div>
         <div class="home-actions">
           <button class="btn btn-ghost" id="btn-back-home">‹ Retour aux niveaux</button>
+        </div>
+      </main>
+
+      <!-- ============ ÉCRAN : MESSAGES ============ -->
+      <main class="screen" id="screen-chat">
+        <div class="hero">
+          <h1 class="hero-title">💬 Messages</h1>
+          <p class="hero-sub" id="chat-sub">Vos petits mots, en direct.</p>
+        </div>
+        <div class="chat-list" id="chat-list"></div>
+        <div class="chat-input">
+          <input type="text" id="chat-text" placeholder="Écris un petit mot…" maxlength="300" autocomplete="off" />
+          <button class="btn btn-primary" id="chat-send" aria-label="Envoyer">➤</button>
+        </div>
+        <div class="home-actions">
+          <button class="btn btn-ghost" id="btn-chat-back">‹ Retour aux niveaux</button>
         </div>
       </main>
     </div>
@@ -195,8 +212,8 @@
 
     <div class="toast" id="toast" hidden></div>
 
-    <script src="js/sudoku.js?v=5"></script>
-    <script src="js/sync.js?v=5"></script>
-    <script src="js/app.js?v=5"></script>
+    <script src="js/sudoku.js?v=6"></script>
+    <script src="js/sync.js?v=6"></script>
+    <script src="js/app.js?v=6"></script>
   </body>
 </html>

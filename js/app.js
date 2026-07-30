@@ -13,9 +13,11 @@
     currentPlayer: 0,
     unlocked: 1, // nombre de niveaux débloqués (le 1er est toujours dispo)
     theme: "dark",
-    syncCode: null, // code de l'espace de couple (kvdb bucket)
+    syncCode: null, // code de l'espace de couple (bucket jsonblob)
     // records[levelIndex] = { "0": tempsSecondes, "1": tempsSecondes }
     records: {},
+    messages: [], // messagerie partagée : [{ id, from, text, ts }]
+    lastRead: 0, // horodatage local du dernier message lu (non synchronisé)
   };
 
   function loadState() {
@@ -45,6 +47,7 @@
     levels: $("#screen-levels"),
     game: $("#screen-game"),
     scoreboard: $("#screen-scoreboard"),
+    chat: $("#screen-chat"),
   };
 
   function showScreen(name) {
@@ -62,6 +65,19 @@
   }
   function initials(name) {
     return (name || "?").trim().charAt(0).toUpperCase() || "?";
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+  function fmtTime(ts) {
+    const d = new Date(ts);
+    const now = new Date();
+    const hh = String(d.getHours()).padStart(2, "0");
+    const mm = String(d.getMinutes()).padStart(2, "0");
+    const sameDay = d.toDateString() === now.toDateString();
+    return sameDay ? `${hh}:${mm}` : `${d.getDate()}/${d.getMonth() + 1} ${hh}:${mm}`;
   }
   const AVATAR_COLORS = ["#7c3aed", "#ec4899"];
 
@@ -119,6 +135,7 @@
         saveState();
         renderPlayerSwitch();
         renderLevels();
+        updateChatBadge();
         toast(`À toi de jouer, ${name} !`);
       };
       wrap.appendChild(b);
@@ -825,7 +842,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v5";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v6";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -835,6 +852,17 @@
     $("#btn-join-space").onclick = joinSpace;
     $("#btn-leave-space").onclick = leaveSpace;
     $("#btn-copy-code").onclick = copyCode;
+
+    // Messagerie
+    $("#btn-chat").onclick = openChat;
+    $("#btn-chat-back").onclick = () => showScreen("levels");
+    $("#chat-send").onclick = sendChat;
+    $("#chat-text").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendChat();
+      }
+    });
 
     // Données
     $("#btn-export").onclick = exportData;
@@ -897,8 +925,20 @@
       players: state.players,
       records: state.records,
       unlocked: state.unlocked,
+      messages: state.messages || [],
       updatedAt: Date.now(),
     };
+  }
+
+  // Fusionne les messages distants et locaux (union par id, triés, plafonnés).
+  function mergeMessages(remoteMsgs) {
+    if (!Array.isArray(remoteMsgs)) return;
+    const map = {};
+    (state.messages || []).forEach((m) => { if (m && m.id) map[m.id] = m; });
+    remoteMsgs.forEach((m) => { if (m && m.id) map[m.id] = m; });
+    let arr = Object.values(map).sort((a, b) => a.ts - b.ts);
+    if (arr.length > 200) arr = arr.slice(arr.length - 200);
+    state.messages = arr;
   }
 
   // Fusionne un document distant dans l'état local (on garde le meilleur temps).
@@ -921,6 +961,7 @@
     if (Array.isArray(remote.players) && remote.players.length === 2) {
       state.players = remote.players;
     }
+    mergeMessages(remote.messages);
     recomputeUnlocked();
   }
 
@@ -929,12 +970,20 @@
     if (!state.syncCode || !window.Sync) return;
     setSyncDot("syncing");
     try {
+      const prevUnread = unreadCount();
       const remote = await Sync.pull(state.syncCode);
       mergeRemote(remote);
       saveState();
       renderPlayerSwitch();
       renderLevels();
+      updateChatBadge();
       if (screens.scoreboard.classList.contains("active")) renderScoreboard();
+      if (screens.chat.classList.contains("active")) renderChat();
+      // Notifie l'arrivée d'un nouveau message (hors écran de chat).
+      if (unreadCount() > prevUnread && !screens.chat.classList.contains("active")) {
+        const other = state.players[1 - state.currentPlayer] || "ta moitié";
+        toast("💬 Nouveau message de " + other, 3500);
+      }
       if (pushAfter) {
         await Sync.push(state.syncCode, buildDoc());
       }
@@ -954,7 +1003,7 @@
     if (!state.syncCode) return;
     pollId = setInterval(() => {
       if (document.visibilityState === "visible") cloudSync(false);
-    }, 20000);
+    }, 12000);
   }
   function stopPolling() {
     if (pollId) clearInterval(pollId);
@@ -1030,6 +1079,81 @@
   }
 
   /* ============================================================
+   * MESSAGERIE
+   * ============================================================ */
+  function unreadCount() {
+    return (state.messages || []).filter(
+      (m) => m.from !== state.currentPlayer && m.ts > (state.lastRead || 0)
+    ).length;
+  }
+  function updateChatBadge() {
+    const badge = $("#chat-badge");
+    if (!badge) return;
+    const n = unreadCount();
+    if (n > 0) {
+      badge.textContent = n > 9 ? "9+" : n;
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  }
+  function renderChat() {
+    const list = $("#chat-list");
+    list.innerHTML = "";
+    const msgs = state.messages || [];
+    if (!msgs.length) {
+      const e = document.createElement("div");
+      e.className = "chat-empty";
+      e.textContent = state.syncCode
+        ? "Aucun message pour l'instant. Envoie le premier ! 💌"
+        : "Active d'abord votre espace de couple 💕 (bouton en haut) pour pouvoir discuter.";
+      list.appendChild(e);
+      return;
+    }
+    msgs.forEach((m) => {
+      const d = document.createElement("div");
+      const mine = m.from === state.currentPlayer;
+      d.className = "msg " + (mine ? "mine" : "theirs");
+      const who = mine ? "toi" : escapeHtml(state.players[m.from] || "?");
+      d.innerHTML = `${escapeHtml(m.text)}<span class="meta">${who} · ${fmtTime(m.ts)}</span>`;
+      list.appendChild(d);
+    });
+    list.scrollTop = list.scrollHeight;
+  }
+  function sendChat() {
+    const input = $("#chat-text");
+    const text = input.value.trim();
+    if (!text) return;
+    if (!state.syncCode) {
+      toast("Active votre espace de couple 💕 pour discuter");
+      return;
+    }
+    const msg = {
+      id: state.currentPlayer + "-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      from: state.currentPlayer,
+      text: text,
+      ts: Date.now(),
+    };
+    if (!state.messages) state.messages = [];
+    state.messages.push(msg);
+    if (state.messages.length > 200) state.messages = state.messages.slice(-200);
+    state.lastRead = Date.now();
+    saveState();
+    input.value = "";
+    renderChat();
+    updateChatBadge();
+    cloudSync(true); // envoie au cloud (fusionne au passage)
+  }
+  function openChat() {
+    state.lastRead = Date.now();
+    saveState();
+    updateChatBadge();
+    renderChat();
+    showScreen("chat");
+    if (state.syncCode) cloudSync(false); // récupère les derniers messages
+  }
+
+  /* ============================================================
    * INITIALISATION
    * ============================================================ */
   function init() {
@@ -1040,6 +1164,7 @@
     renderLevels();
     bindEvents();
     updateSyncUI();
+    updateChatBadge();
     // Message de motivation en bulle à l'ouverture (en plus du sous-titre).
     setTimeout(() => {
       if (screens.levels.classList.contains("active")) toast(lastMotivation, 4500);
