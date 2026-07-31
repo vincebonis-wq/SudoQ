@@ -13,6 +13,7 @@
     currentPlayer: 0,
     unlocked: 1, // nombre de niveaux débloqués (le 1er est toujours dispo)
     theme: "dark",
+    playersUpdatedAt: 0, // horodatage du dernier changement de noms (last-writer-wins)
     syncCode: null, // code de l'espace de couple (bucket jsonblob)
     // records[levelIndex] = { "0": tempsSecondes, "1": tempsSecondes }
     records: {},
@@ -732,6 +733,7 @@
     const n1 = $("#p1-name").value.trim() || "Joueur 1";
     const n2 = $("#p2-name").value.trim() || "Joueur 2";
     state.players = [n1, n2];
+    state.playersUpdatedAt = Date.now(); // le changement le plus récent gagne
     saveState();
     $("#players-modal").hidden = true;
     renderPlayerSwitch();
@@ -906,7 +908,7 @@
     if (lastSyncErrorMsg) status = "⚠️ dernière erreur : " + lastSyncErrorMsg;
     else if (lastSyncOkAt) status = "dernière synchro : OK ✓ à " + fmtTime(lastSyncOkAt);
     else status = state.syncCode ? "en attente…" : "—";
-    el.textContent = "synchro : " + prov + " · v10 · " + status;
+    el.textContent = "synchro : " + prov + " · v11 · " + status;
   }
 
   function setSyncDot(status) {
@@ -934,6 +936,7 @@
     return {
       app: "SudoQ",
       players: state.players,
+      playersUpdatedAt: state.playersUpdatedAt || 0,
       records: state.records,
       unlocked: state.unlocked,
       messages: state.messages || [],
@@ -977,9 +980,14 @@
         });
       });
     }
-    // Les noms sont partagés par l'espace : on adopte ceux du cloud.
+    // Noms partagés : on adopte ceux du cloud SEULEMENT s'ils sont plus récents
+    // que notre dernier changement local (sinon on écraserait notre renommage).
     if (Array.isArray(remote.players) && remote.players.length === 2) {
-      state.players = remote.players;
+      const remoteAt = remote.playersUpdatedAt || 0;
+      if (remoteAt >= (state.playersUpdatedAt || 0)) {
+        state.players = remote.players;
+        state.playersUpdatedAt = remoteAt;
+      }
     }
     mergeMessages(remote.messages);
     recomputeUnlocked();
