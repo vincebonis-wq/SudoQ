@@ -260,10 +260,7 @@
     cell.classList.remove("error");
     if (val !== 0) {
       cell.textContent = val;
-      // Erreur = en contradiction avec la solution (uniquement pour les saisies utilisateur)
-      if (game.puzzle[i] === 0 && val !== game.solution[i]) {
-        cell.classList.add("error");
-      }
+      // Aucune indication de justesse : le jeu ne dit PAS si le chiffre est bon.
     } else {
       cell.textContent = "";
       const notes = game.notes[i];
@@ -306,7 +303,7 @@
       const sameBox =
         Math.floor(row / 3) === selBoxR && Math.floor(col / 3) === selBoxC;
       if (sameRow || sameCol || sameBox) cell.classList.add("peer");
-      if (selVal !== 0 && game.values[i] === selVal) cell.classList.add("same-num");
+      // Pas de mise en évidence des mêmes chiffres (on ne révèle pas où ils sont).
     }
     $(`.cell[data-i="${sel}"]`).classList.add("selected");
   }
@@ -843,7 +840,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v7";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v8";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -931,6 +928,15 @@
     };
   }
 
+  // Signature stable de l'état synchronisable (records + messages + progression).
+  // Sert à détecter si le local contient des données absentes du serveur.
+  function syncSig(records, messages, unlocked) {
+    const r = {};
+    Object.keys(records || {}).sort().forEach((k) => { r[k] = records[k]; });
+    const m = (messages || []).map((x) => x.id).sort();
+    return JSON.stringify({ r, m, u: unlocked || 0 });
+  }
+
   // Fusionne les messages distants et locaux (union par id, triés, plafonnés).
   function mergeMessages(remoteMsgs) {
     if (!Array.isArray(remoteMsgs)) return;
@@ -973,6 +979,12 @@
     try {
       const prevUnread = unreadCount();
       const remote = await Sync.pull(state.syncCode);
+      // Signature du serveur AVANT fusion, pour savoir si le local a du "neuf".
+      const remoteSig = syncSig(
+        remote && remote.records,
+        remote && remote.messages,
+        remote && remote.unlocked
+      );
       mergeRemote(remote);
       saveState();
       renderPlayerSwitch();
@@ -985,13 +997,13 @@
         const other = state.players[1 - state.currentPlayer] || "ta moitié";
         toast("💬 Nouveau message de " + other, 3500);
       }
-      // On pousse si demandé OU s'il reste des messages à moi non confirmés
-      // envoyés (renvoi automatique après un éventuel raté réseau).
+      // Renvoi automatique et robuste : on pousse si demandé, OU si l'état local
+      // contient des données absentes du serveur (records, messages ou
+      // progression non encore synchronisés). Corrige la perte de records/
+      // messages après un raté réseau, sur n'importe quel tick de synchro.
       if (!state.sentIds) state.sentIds = [];
-      const hasUnsent = (state.messages || []).some(
-        (m) => m.from === state.currentPlayer && state.sentIds.indexOf(m.id) === -1
-      );
-      if (pushAfter || hasUnsent) {
+      const localSig = syncSig(state.records, state.messages, state.unlocked);
+      if (pushAfter || localSig !== remoteSig) {
         await Sync.push(state.syncCode, buildDoc());
         // Confirmé : tous mes messages sont maintenant sur le serveur.
         (state.messages || []).forEach((m) => {
