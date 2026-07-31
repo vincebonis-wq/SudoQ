@@ -321,6 +321,8 @@ body:not(.light) .level-card .lv-best.done { color: var(--gold); }
 .chat-input input:focus { border-color: var(--accent); }
 .chat-input .btn { padding: 12px 18px; font-size: 18px; flex-shrink: 0; }
 
+.app-version { text-align: center; color: var(--text-dim); opacity: .6; font-size: 11px; margin-top: 22px; }
+
 .home-actions { display: flex; justify-content: center; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
 .data-actions { margin-top: 20px; }
 

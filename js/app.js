@@ -6,6 +6,7 @@
 
   const { LEVELS, BAND_META, getLevelPuzzle, isSafe } = window.Sudoku;
   const STORE_KEY = "sudoq.v1";
+  const APP_VERSION = "v12";
 
   /* ----------------- État persistant ----------------- */
   const defaultState = {
@@ -133,6 +134,11 @@
       b.textContent = name;
       b.className = i === state.currentPlayer ? "active" : "";
       b.onclick = () => {
+        // Taper sur le joueur déjà actif ouvre l'édition des noms.
+        if (i === state.currentPlayer) {
+          openPlayersModal();
+          return;
+        }
         state.currentPlayer = i;
         saveState();
         renderPlayerSwitch();
@@ -908,7 +914,7 @@
     if (lastSyncErrorMsg) status = "⚠️ dernière erreur : " + lastSyncErrorMsg;
     else if (lastSyncOkAt) status = "dernière synchro : OK ✓ à " + fmtTime(lastSyncOkAt);
     else status = state.syncCode ? "en attente…" : "—";
-    el.textContent = "synchro : " + prov + " · v11 · " + status;
+    el.textContent = "synchro : " + prov + " · " + APP_VERSION + " · " + status;
   }
 
   function setSyncDot(status) {
@@ -1226,6 +1232,8 @@
     renderPlayerSwitch();
     renderLevels();
     bindEvents();
+    const ver = $("#app-version");
+    if (ver) ver.textContent = "SudoQ " + APP_VERSION + " · synchro Firebase";
     updateSyncUI();
     updateChatBadge();
     // Message de motivation en bulle à l'ouverture (en plus du sous-titre).
