@@ -2,49 +2,57 @@
  * SudoQ — Synchronisation cloud (gratuite, sans compte)
  *
  * Fournisseur : jsonblob.com — stockage JSON gratuit, sans inscription,
- * conçu pour être utilisé directement depuis le navigateur (CORS activé).
+ * utilisable directement depuis le navigateur (CORS activé).
  *
- * Principe : on crée un "blob" (= espace de couple). Son identifiant est le
- * "code de couple" que les deux joueurs partagent. Les records y sont stockés
- * puis fusionnés localement (on garde le meilleur temps).
- *
+ * Requêtes avec réessais automatiques (backoff) pour lisser les ratés réseau.
  * Tout est isolé ici : pour changer de fournisseur, réécrire createSpace /
- * pull / push / check (4 fonctions).
+ * pull / push / check.
  * ========================================================================= */
 (function () {
   "use strict";
 
   const API = "https://jsonblob.com/api/jsonBlob";
 
-  // Extrait l'identifiant du blob depuis l'en-tête Location (URL absolue ou relative).
+  // fetch avec réessais : rejoue sur erreur réseau, 429 ou 5xx (jusqu'à `tries`).
+  async function fetchRetry(url, opts, tries) {
+    tries = tries || 3;
+    let lastErr;
+    for (let i = 0; i < tries; i++) {
+      try {
+        const res = await fetch(url, opts);
+        if (res.ok || res.status === 404) return res;
+        if (res.status !== 429 && res.status < 500) return res; // 4xx définitif
+        lastErr = new Error("HTTP " + res.status);
+      } catch (e) {
+        // "Failed to fetch" = réseau ou CORS
+        lastErr = e;
+      }
+      await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+    }
+    throw lastErr || new Error("échec réseau");
+  }
+
   function idFromLocation(loc) {
     if (!loc) return null;
     const parts = loc.split("/").filter(Boolean);
     return parts[parts.length - 1] || null;
   }
 
-  // Crée un nouvel espace et renvoie son code (identifiant de blob).
   async function createSpace(initialDoc) {
-    const res = await fetch(API, {
+    const res = await fetchRetry(API, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(initialDoc || { app: "SudoQ", records: {} }),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    // L'id est renvoyé dans l'en-tête Location (jsonblob expose cet en-tête en CORS).
     let id = idFromLocation(res.headers.get("Location"));
     if (!id) id = idFromLocation(res.headers.get("X-jsonblob"));
     if (!id) throw new Error("Identifiant de l'espace introuvable");
     return id;
   }
 
-  // Récupère le document distant (ou null s'il n'existe pas / est vide).
   async function pull(code) {
-    // Le paramètre _ casse tout cache éventuel (navigateur/CDN) à la lecture.
-    const res = await fetch(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
+    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
@@ -59,27 +67,22 @@
     }
   }
 
-  // Écrit (remplace) le document distant.
   async function push(code, doc) {
-    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
+    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(doc),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     return true;
   }
 
-  // Vérifie qu'un code existe / est joignable (pour "Rejoindre").
   async function check(code) {
-    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
+    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
-    return res.ok;
+    return res.ok || res.status === 404;
   }
 
   window.Sync = { createSpace, pull, push, check, provider: "jsonblob.com" };

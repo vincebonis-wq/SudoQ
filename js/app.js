@@ -839,8 +839,7 @@
     // Synchro / espace de couple
     const openSync = () => {
       updateSyncUI();
-      const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v8";
+      updateSyncProviderLine();
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -895,6 +894,20 @@
    * ============================================================ */
   let pollId = null;
   let lastSyncError = false;
+  let lastSyncErrorMsg = "";
+  let lastSyncOkAt = 0;
+
+  // Ligne de diagnostic affichée dans la modale 💕 (aide au dépannage).
+  function updateSyncProviderLine() {
+    const el = $("#sync-provider");
+    if (!el) return;
+    const prov = window.Sync ? window.Sync.provider : "aucun";
+    let status;
+    if (lastSyncErrorMsg) status = "⚠️ dernière erreur : " + lastSyncErrorMsg;
+    else if (lastSyncOkAt) status = "dernière synchro : OK ✓ à " + fmtTime(lastSyncOkAt);
+    else status = state.syncCode ? "en attente…" : "—";
+    el.textContent = "synchro : " + prov + " · v9 · " + status;
+  }
 
   function setSyncDot(status) {
     const dot = $("#sync-dot");
@@ -1018,13 +1031,17 @@
       }
       setSyncDot("ok");
       lastSyncError = false;
+      lastSyncErrorMsg = "";
+      lastSyncOkAt = Date.now();
     } catch (e) {
       setSyncDot("error");
+      lastSyncErrorMsg = (e && e.message) || "inconnue";
       if (!lastSyncError) {
         toast("Synchro indisponible — sauvegarde locale active 💾");
         lastSyncError = true;
       }
     }
+    if (!$("#sync-modal").hidden) updateSyncProviderLine();
   }
 
   function startPolling() {
@@ -1052,7 +1069,9 @@
       startPolling();
       toast("Espace créé ✓ Partage ton code 💕");
     } catch (e) {
-      toast("Impossible de créer l'espace (réseau). Réessaie.");
+      lastSyncErrorMsg = (e && e.message) || "inconnue";
+      updateSyncProviderLine();
+      toast("Création impossible : " + lastSyncErrorMsg, 4000);
     } finally {
       btn.disabled = false;
       btn.textContent = "✨ Créer notre espace";
@@ -1070,16 +1089,21 @@
     btn.disabled = true;
     btn.textContent = "Connexion…";
     try {
-      const ok = await Sync.check(code);
-      if (!ok) throw new Error("introuvable");
+      // On tente directement de lire l'espace (avec réessais).
+      const remote = await Sync.pull(code);
       state.syncCode = code;
       saveState();
-      await cloudSync(true); // récupère les données existantes et pousse les nôtres
+      lastSyncErrorMsg = "";
+      lastSyncOkAt = Date.now();
+      await cloudSync(true); // fusionne les données existantes et pousse les nôtres
       updateSyncUI();
       startPolling();
-      toast("Espace rejoint ✓ Records synchronisés 💕");
+      const nb = remote && remote.records ? Object.keys(remote.records).length : 0;
+      toast("Espace rejoint ✓ " + (nb ? nb + " niveau(x) récupéré(s) 💕" : "Synchronisé 💕"));
     } catch (e) {
-      toast("Code invalide ou réseau indisponible");
+      lastSyncErrorMsg = (e && e.message) || "inconnue";
+      updateSyncProviderLine();
+      toast("Impossible de rejoindre : " + lastSyncErrorMsg, 4000);
     } finally {
       btn.disabled = false;
       btn.textContent = "Rejoindre l'espace";
