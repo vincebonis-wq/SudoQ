@@ -18,6 +18,7 @@
     records: {},
     messages: [], // messagerie partagée : [{ id, from, text, ts }]
     lastRead: 0, // horodatage local du dernier message lu (non synchronisé)
+    sentIds: [], // ids de MES messages confirmés envoyés au serveur (local)
   };
 
   function loadState() {
@@ -842,7 +843,7 @@
     const openSync = () => {
       updateSyncUI();
       const prov = window.Sync ? window.Sync.provider : "aucun";
-      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v6";
+      $("#sync-provider").textContent = "moteur de synchro : " + prov + " · v7";
       $("#sync-modal").hidden = false;
     };
     $("#btn-sync").onclick = openSync;
@@ -984,8 +985,24 @@
         const other = state.players[1 - state.currentPlayer] || "ta moitié";
         toast("💬 Nouveau message de " + other, 3500);
       }
-      if (pushAfter) {
+      // On pousse si demandé OU s'il reste des messages à moi non confirmés
+      // envoyés (renvoi automatique après un éventuel raté réseau).
+      if (!state.sentIds) state.sentIds = [];
+      const hasUnsent = (state.messages || []).some(
+        (m) => m.from === state.currentPlayer && state.sentIds.indexOf(m.id) === -1
+      );
+      if (pushAfter || hasUnsent) {
         await Sync.push(state.syncCode, buildDoc());
+        // Confirmé : tous mes messages sont maintenant sur le serveur.
+        (state.messages || []).forEach((m) => {
+          if (m.from === state.currentPlayer && state.sentIds.indexOf(m.id) === -1)
+            state.sentIds.push(m.id);
+        });
+        // Purge des ids qui ne correspondent plus à un message existant.
+        const ids = new Set((state.messages || []).map((m) => m.id));
+        state.sentIds = state.sentIds.filter((id) => ids.has(id));
+        saveState();
+        if (screens.chat.classList.contains("active")) renderChat();
       }
       setSyncDot("ok");
       lastSyncError = false;
@@ -1110,12 +1127,14 @@
       list.appendChild(e);
       return;
     }
+    const sentIds = state.sentIds || [];
     msgs.forEach((m) => {
       const d = document.createElement("div");
       const mine = m.from === state.currentPlayer;
       d.className = "msg " + (mine ? "mine" : "theirs");
       const who = mine ? "toi" : escapeHtml(state.players[m.from] || "?");
-      d.innerHTML = `${escapeHtml(m.text)}<span class="meta">${who} · ${fmtTime(m.ts)}</span>`;
+      const status = mine ? (sentIds.indexOf(m.id) !== -1 ? " · ✓" : " · ⌛") : "";
+      d.innerHTML = `${escapeHtml(m.text)}<span class="meta">${who} · ${fmtTime(m.ts)}${status}</span>`;
       list.appendChild(d);
     });
     list.scrollTop = list.scrollHeight;

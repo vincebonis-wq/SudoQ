@@ -43,7 +43,8 @@
 
   // Récupère le document distant (ou null s'il n'existe pas / est vide).
   async function pull(code) {
-    const res = await fetch(`${API}/${encodeURIComponent(code)}`, {
+    // Le paramètre _ casse tout cache éventuel (navigateur/CDN) à la lecture.
+    const res = await fetch(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
