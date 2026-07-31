@@ -51,8 +51,8 @@ Vous pouvez alors y jouer chacun depuis votre téléphone.
 ## 🏆 Synchroniser vos records (espace de couple)
 
 Les scores se synchronisent **automatiquement entre vos deux téléphones**, via
-un petit stockage cloud gratuit et **sans aucun compte à créer**
-([jsonblob.com](https://jsonblob.com)). Un « code de couple » unique relie vos deux
+une base **Firebase Realtime Database** (Google), fiable et gratuite
+. Un « code de couple » unique relie vos deux
 appareils.
 
 ### Mise en route (une seule fois)
@@ -81,11 +81,11 @@ l'app et toutes les 20 s).
 
 ### Bon à savoir
 
-- Le stockage `jsonblob.com` est gratuit et sans compte ; c'est un service tiers
-  léger. Si un jour il ne répondait pas, la synchro se met en pause (l'app
-  affiche « sauvegarde locale active ») sans jamais bloquer le jeu.
-- Pour changer de fournisseur cloud, tout est isolé dans **`js/sync.js`**
-  (3 fonctions : `createSpace`, `pull`, `push`).
+- La base Firebase (Google) est gratuite (plan Spark, sans carte bancaire) et
+  fiable. Si elle ne répondait pas momentanément, la synchro se met en pause
+  (l'app affiche « sauvegarde locale active ») sans jamais bloquer le jeu.
+- L'URL de la base et les règles d'accès sont dans `js/sync.js` ; tout est
+  isolé là (`createSpace`, `pull`, `push`, `check`) pour changer de fournisseur.
 
 ## 🗂 Structure
 
@@ -93,7 +93,7 @@ l'app et toutes les 20 s).
 index.html        Structure de l'app
 css/styles.css    Styles (thèmes clair/sombre, responsive)
 js/sudoku.js      Moteur : générateur déterministe + solveur (unicité garantie)
-js/sync.js        Synchro cloud gratuite sans compte (espace de couple, jsonblob.com)
+js/sync.js        Synchro cloud gratuite sans compte (espace de couple, Firebase)
 js/app.js         Logique : niveaux, chrono, notes, records, profils, synchro
 scores.json       Modèle de fichier de scores (sauvegarde/export manuel)
 ```

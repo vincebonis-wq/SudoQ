@@ -1,65 +1,77 @@
 /* =========================================================================
- * SudoQ — Synchronisation cloud (gratuite, sans compte)
+ * SudoQ — Synchronisation cloud via Firebase Realtime Database
  *
- * Fournisseur : jsonblob.com — stockage JSON gratuit, sans inscription,
- * utilisable directement depuis le navigateur (CORS activé).
+ * Fiable, gratuit, fonctionne depuis n'importe quel réseau/appareil.
+ * L'URL de la base n'est pas un secret (la sécurité vient des règles Firebase :
+ * accès uniquement sous /spaces/<code>, code non devinable).
  *
- * Requêtes avec réessais automatiques (backoff) pour lisser les ratés réseau.
+ * API REST Firebase :
+ *   - lire    : GET  <DB>/spaces/<code>.json     (renvoie null si absent)
+ *   - écrire  : PUT  <DB>/spaces/<code>.json     (remplace le contenu)
+ *
  * Tout est isolé ici : pour changer de fournisseur, réécrire createSpace /
  * pull / push / check.
  * ========================================================================= */
 (function () {
   "use strict";
 
-  const API = "https://jsonblob.com/api/jsonBlob";
+  // Base Realtime Database (sans slash final).
+  const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
 
-  // fetch avec réessais : rejoue sur erreur réseau, 429 ou 5xx (jusqu'à `tries`).
+  function spaceUrl(code) {
+    return `${DB}/spaces/${encodeURIComponent(code)}.json`;
+  }
+
+  // fetch avec réessais : rejoue sur erreur réseau / 429 / 5xx.
   async function fetchRetry(url, opts, tries) {
     tries = tries || 3;
     let lastErr;
     for (let i = 0; i < tries; i++) {
       try {
         const res = await fetch(url, opts);
-        if (res.ok || res.status === 404) return res;
+        if (res.ok) return res;
         if (res.status !== 429 && res.status < 500) return res; // 4xx définitif
         lastErr = new Error("HTTP " + res.status);
       } catch (e) {
-        // "Failed to fetch" = réseau ou CORS
-        lastErr = e;
+        lastErr = e; // "Failed to fetch" = réseau/CORS
       }
       await new Promise((r) => setTimeout(r, 400 * (i + 1)));
     }
     throw lastErr || new Error("échec réseau");
   }
 
-  function idFromLocation(loc) {
-    if (!loc) return null;
-    const parts = loc.split("/").filter(Boolean);
-    return parts[parts.length - 1] || null;
+  // Génère un code d'espace unique et non devinable.
+  function newCode() {
+    try {
+      if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    } catch (e) {}
+    return (
+      "s" +
+      Math.random().toString(36).slice(2, 10) +
+      Date.now().toString(36)
+    );
   }
 
+  // Crée un nouvel espace (écrit l'état initial) et renvoie son code.
   async function createSpace(initialDoc) {
-    const res = await fetchRetry(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+    const code = newCode();
+    const res = await fetchRetry(spaceUrl(code), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(initialDoc || { app: "SudoQ", records: {} }),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    let id = idFromLocation(res.headers.get("Location"));
-    if (!id) id = idFromLocation(res.headers.get("X-jsonblob"));
-    if (!id) throw new Error("Identifiant de l'espace introuvable");
-    return id;
+    return code;
   }
 
+  // Récupère le document distant (ou null s'il n'existe pas encore).
   async function pull(code) {
-    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
-      headers: { Accept: "application/json" },
+    const res = await fetchRetry(`${spaceUrl(code)}?_=${Date.now()}`, {
       cache: "no-store",
     });
-    if (res.status === 404) return null;
     if (!res.ok) throw new Error("HTTP " + res.status);
     const txt = await res.text();
-    if (!txt) return null;
+    if (!txt || txt === "null") return null; // Firebase renvoie "null" si absent
     try {
       return JSON.parse(txt);
     } catch (e) {
@@ -67,23 +79,24 @@
     }
   }
 
+  // Écrit (remplace) le document distant.
   async function push(code, doc) {
-    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}`, {
+    const res = await fetchRetry(spaceUrl(code), {
       method: "PUT",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(doc),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
     return true;
   }
 
+  // Vérifie que l'espace est joignable (le serveur répond).
   async function check(code) {
-    const res = await fetchRetry(`${API}/${encodeURIComponent(code)}?_=${Date.now()}`, {
-      headers: { Accept: "application/json" },
+    const res = await fetchRetry(`${spaceUrl(code)}?_=${Date.now()}`, {
       cache: "no-store",
     });
-    return res.ok || res.status === 404;
+    return res.ok;
   }
 
-  window.Sync = { createSpace, pull, push, check, provider: "jsonblob.com" };
+  window.Sync = { createSpace, pull, push, check, provider: "firebase" };
 })();

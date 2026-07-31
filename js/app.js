@@ -906,7 +906,7 @@
     if (lastSyncErrorMsg) status = "⚠️ dernière erreur : " + lastSyncErrorMsg;
     else if (lastSyncOkAt) status = "dernière synchro : OK ✓ à " + fmtTime(lastSyncOkAt);
     else status = state.syncCode ? "en attente…" : "—";
-    el.textContent = "synchro : " + prov + " · v9 · " + status;
+    el.textContent = "synchro : " + prov + " · v10 · " + status;
   }
 
   function setSyncDot(status) {
