@@ -6,7 +6,7 @@
 
   const { LEVELS, BAND_META, getLevelPuzzle, isSafe } = window.Sudoku;
   const STORE_KEY = "sudoq.v1";
-  const APP_VERSION = "v12";
+  const APP_VERSION = "v13";
 
   /* ----------------- État persistant ----------------- */
   const defaultState = {
@@ -35,6 +35,17 @@
   }
   function saveState() {
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
+    // Miroir partagé avec les autres jeux du même site (même code de couple).
+    try {
+      localStorage.setItem(
+        "couple",
+        JSON.stringify({
+          code: state.syncCode || null,
+          players: state.players,
+          playersUpdatedAt: state.playersUpdatedAt || 0,
+        })
+      );
+    } catch (e) {}
   }
   let state = loadState();
 
@@ -1232,6 +1243,7 @@
     renderPlayerSwitch();
     renderLevels();
     bindEvents();
+    saveState(); // écrit le miroir "couple" partagé avec les autres jeux dès l'ouverture
     const ver = $("#app-version");
     if (ver) ver.textContent = "SudoQ " + APP_VERSION + " · synchro Firebase";
     updateSyncUI();

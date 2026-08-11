@@ -79,10 +79,12 @@
     }
   }
 
-  // Écrit (remplace) le document distant.
+  // Met à jour le document distant par FUSION (PATCH) : ne modifie que les clés
+  // de SudoQ et laisse intactes les données des autres jeux (ex. /navale) qui
+  // partagent le même espace de couple.
   async function push(code, doc) {
     const res = await fetchRetry(spaceUrl(code), {
-      method: "PUT",
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(doc),
     });
