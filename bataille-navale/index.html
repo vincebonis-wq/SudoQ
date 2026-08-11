@@ -3,19 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#0f172a" />
+    <meta name="theme-color" content="#0b1220" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Bataille navale · SudoQ</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=1" />
+    <link rel="stylesheet" href="style.css?v=2" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%A2%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
     <div id="app">
       <header class="topbar">
-        <a class="brand" href="../index.html" title="Retour aux jeux" style="text-decoration:none;color:inherit">
+        <a class="brand" href="../index.html" title="Retour aux jeux">
           <span class="mark">🚢</span>
           <span class="name">Bataille <span>navale</span></span>
         </a>
@@ -29,12 +29,13 @@
       <div id="gate" class="card" hidden>
         <h2>💕 Espace de couple requis</h2>
         <p>La bataille navale utilise le même espace que SudoQ. Ouvre d'abord
-        SudoQ et crée (ou rejoins) votre espace de couple, puis reviens ici.</p>
+        SudoQ, crée (ou rejoins) votre espace de couple, puis reviens ici.</p>
         <a class="btn btn-primary" href="../index.html">Ouvrir SudoQ</a>
       </div>
 
       <!-- Choix du joueur -->
       <div id="who" class="card" hidden>
+        <div class="who-avatar">⚓</div>
         <h2>Qui es-tu ?</h2>
         <p>Choisis ton profil (chacun le sien sur son téléphone).</p>
         <div class="who-btns" id="who-btns"></div>
@@ -51,27 +52,38 @@
 
         <!-- Placement -->
         <section id="setup" hidden>
-          <div class="setup-tools">
-            <div class="fleet" id="fleet"></div>
-            <div class="setup-row">
-              <button class="btn btn-outline" id="btn-rotate">↻ Orientation : horizontale</button>
-              <button class="btn btn-outline" id="btn-random">🎲 Aléatoire</button>
-              <button class="btn btn-ghost" id="btn-clear">Effacer</button>
-            </div>
+          <div class="fleet-tray" id="fleet"></div>
+          <div class="setup-actions">
+            <button class="btn btn-outline btn-sm" id="btn-rotate">↻ Pivoter (H)</button>
+            <button class="btn btn-outline btn-sm" id="btn-random">🎲 Aléatoire</button>
+            <button class="btn btn-ghost btn-sm" id="btn-clear">✕ Effacer</button>
           </div>
-          <div class="board-label"><span>Ta grille</span><span id="setup-hint"></span></div>
-          <div class="board" id="setup-board"></div>
-          <div class="center">
-            <button class="btn btn-primary" id="btn-ready" disabled>Je suis prêt·e ✓</button>
+          <div class="play-area">
+            <div class="corner"></div>
+            <div class="cols" id="setup-cols"></div>
+            <div class="rows" id="setup-rows"></div>
+            <div class="board setup" id="setup-board"></div>
           </div>
+          <div class="hint" id="setup-hint"></div>
+          <button class="btn btn-primary big-cta" id="btn-ready" disabled>Prêt au combat ⚔️</button>
         </section>
 
         <!-- Combat -->
         <section id="battle" hidden>
-          <div class="board-label"><span>🎯 Grille adverse (tire ici)</span><span id="enemy-left"></span></div>
-          <div class="board fire" id="enemy-board"></div>
-          <div class="board-label"><span>🛡️ Ta grille</span><span id="my-left"></span></div>
-          <div class="board" id="my-board"></div>
+          <div class="board-title"><span>🎯 Flotte ennemie</span><span class="left" id="enemy-left"></span></div>
+          <div class="play-area">
+            <div class="corner"></div>
+            <div class="cols" id="enemy-cols"></div>
+            <div class="rows" id="enemy-rows"></div>
+            <div class="board fire aim" id="enemy-board"></div>
+          </div>
+          <div class="board-title"><span>🛡️ Ta flotte</span><span class="left" id="my-left"></span></div>
+          <div class="play-area">
+            <div class="corner"></div>
+            <div class="cols" id="my-cols"></div>
+            <div class="rows" id="my-rows"></div>
+            <div class="board" id="my-board"></div>
+          </div>
         </section>
       </main>
 
@@ -86,7 +98,7 @@
         <h2 id="end-title">Victoire !</h2>
         <p id="end-sub"></p>
         <div class="actions">
-          <button class="btn btn-primary" id="btn-rematch">Rejouer 🔁</button>
+          <button class="btn btn-primary" id="btn-rematch">Nouvelle manche 🔁</button>
           <a class="btn btn-ghost" href="../index.html">Retour aux jeux</a>
         </div>
       </div>
@@ -94,6 +106,6 @@
 
     <div class="toast" id="toast" hidden></div>
 
-    <script src="game.js?v=1"></script>
+    <script src="game.js?v=2"></script>
   </body>
 </html>
