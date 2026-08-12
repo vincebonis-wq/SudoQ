@@ -6,7 +6,7 @@
 
   const { LEVELS, BAND_META, getLevelPuzzle, isSafe } = window.Sudoku;
   const STORE_KEY = "sudoq.v1";
-  const APP_VERSION = "v13";
+  const APP_VERSION = "v14";
 
   /* ----------------- État persistant ----------------- */
   const defaultState = {
@@ -868,6 +868,14 @@
     $("#btn-join-space").onclick = joinSpace;
     $("#btn-leave-space").onclick = leaveSpace;
     $("#btn-copy-code").onclick = copyCode;
+    $("#btn-force-sync").onclick = async () => {
+      if (!state.syncCode) return;
+      toast("Synchronisation forcée…");
+      await cloudSync(true);
+      updateSyncUI();
+      const rc = recordCounts();
+      toast(`Synchro OK — ${state.players[0]} ${rc.a} · ${state.players[1]} ${rc.b} niveau(x)`, 3500);
+    };
 
     // Messagerie
     $("#btn-chat").onclick = openChat;
@@ -923,9 +931,10 @@
     const prov = window.Sync ? window.Sync.provider : "aucun";
     let status;
     if (lastSyncErrorMsg) status = "⚠️ dernière erreur : " + lastSyncErrorMsg;
-    else if (lastSyncOkAt) status = "dernière synchro : OK ✓ à " + fmtTime(lastSyncOkAt);
+    else if (lastSyncOkAt) status = "OK ✓ à " + fmtTime(lastSyncOkAt);
     else status = state.syncCode ? "en attente…" : "—";
-    el.textContent = "synchro : " + prov + " · " + APP_VERSION + " · " + status;
+    const codeBit = state.syncCode ? " · code " + String(state.syncCode).slice(0, 8) + "…" : "";
+    el.textContent = "synchro : " + prov + " · " + APP_VERSION + " · " + status + codeBit;
   }
 
   function setSyncDot(status) {
@@ -940,12 +949,23 @@
     $("#btn-sync").title = titles[status] || "";
   }
 
+  function recordCounts() {
+    let a = 0, b = 0;
+    Object.keys(state.records || {}).forEach((l) => {
+      const r = state.records[l];
+      if (r) { if (r[0] != null) a++; if (r[1] != null) b++; }
+    });
+    return { a, b };
+  }
   function updateSyncUI() {
     const connected = !!state.syncCode;
     $("#sync-banner").hidden = connected;
     $("#sync-disconnected").hidden = connected;
     $("#sync-connected").hidden = !connected;
     if (connected) $("#space-code").textContent = state.syncCode;
+    const rc = recordCounts();
+    const el = $("#sync-records");
+    if (el) el.textContent = `Records ici : ${state.players[0]} ${rc.a} · ${state.players[1]} ${rc.b} niveau(x)`;
     setSyncDot(connected ? "ok" : "off");
   }
 
