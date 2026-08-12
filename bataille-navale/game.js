@@ -74,8 +74,35 @@
   function shotsOf(p) { return (navale && navale.shots && navale.shots[p]) || {}; }
   function names() { const p = couple.players && couple.players.length === 2 ? couple.players : ["Joueur 1", "Joueur 2"]; return p; }
   const oppName = () => names()[1 - me];
+  function shipName(size) { return size === 5 ? "Porte-avions" : size === 4 ? "Croiseur" : size === 2 ? "Torpilleur" : "navire"; }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
   function vibrate(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+  /* ---------- Sons (WebAudio) ---------- */
+  let actx = null;
+  function audio() { if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (actx && actx.state === "suspended") actx.resume(); return actx; }
+  function tone(freq, dur, type, vol, slideTo) {
+    const a = audio(); if (!a) return;
+    const o = a.createOscillator(), g = a.createGain();
+    o.type = type || "sine"; o.frequency.value = freq; g.gain.value = vol || 0.09;
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime + (dur || 0.15));
+    o.connect(g); g.connect(a.destination); o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + (dur || 0.15));
+    o.stop(a.currentTime + (dur || 0.15));
+  }
+  function noise(dur, vol) {
+    const a = audio(); if (!a) return;
+    const n = a.sampleRate * (dur || 0.3), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const g = a.createGain(); g.gain.value = vol || 0.15; g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + (dur || 0.3));
+    src.connect(g); g.connect(a.destination); src.start();
+  }
+  const sndFire = () => tone(420, 0.14, "square", 0.06, 120);
+  const sndMiss = () => { tone(300, 0.18, "sine", 0.07, 130); setTimeout(() => noise(0.2, 0.06), 60); };
+  const sndHit = () => { noise(0.35, 0.2); tone(90, 0.35, "sawtooth", 0.12); };
+  const sndSink = () => { noise(0.5, 0.22); [200, 150, 100].forEach((f, i) => setTimeout(() => tone(f, 0.25, "sawtooth", 0.12), i * 120)); };
+  const sndWin = () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.18, "triangle", 0.1), i * 120));
 
   let toastTimer = null;
   function toast(msg, ms) { const el = $("#toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), ms || 2200); }
@@ -402,13 +429,18 @@
     navale.shots = navale.shots || {}; navale.shots[me] = shots;
     const total = oppShips.reduce((n, sh) => n + (sh ? sh.length : 0), 0);
     const hits = Object.keys(shots).filter((x) => shots[x] === "hit").length;
+    // navire coulé ?
+    const sunkShip = hit ? oppShips.find((sh) => (sh || []).indexOf(k) !== -1 && sh.every((c) => shots[c] === "hit")) : null;
     const meta = {};
+    audio(); sndFire();
     if (hit && total > 0 && hits >= total) {
       const sc = normScores(navale.scores); sc[me] = (sc[me] || 0) + 1;
       navale.status = "finished"; navale.winner = me; navale.scores = sc;
       meta.status = "finished"; meta.winner = me; meta.scores = sc; vibrate([40, 60, 120]);
-    } else if (hit) { toast("💥 Touché !"); vibrate(60); }
-    else { navale.turn = 1 - me; meta.turn = 1 - me; toast("💧 Manqué"); vibrate(20); }
+      setTimeout(sndSink, 130); setTimeout(sndWin, 500);
+    } else if (sunkShip) { setTimeout(sndSink, 130); toast("💥 Coulé — " + shipName(sunkShip.length) + " !", 2600); vibrate([50, 40, 90]); }
+    else if (hit) { setTimeout(sndHit, 100); toast("💥 Touché !"); vibrate(60); }
+    else { navale.turn = 1 - me; meta.turn = 1 - me; setTimeout(sndMiss, 100); toast("💧 Manqué"); vibrate(20); }
     render();
     try {
       await store().put("/shots/" + me, shots);

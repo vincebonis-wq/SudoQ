@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v2";
+  const APP_VERSION = "v3";
   const DURATION = 300000;
   const SYMBOLS = ["🌟", "🌀", "🔺", "🟣", "🍀", "🌸", "☢️", "⚡", "✈️", "⚓", "💀", "✂️"];
   const WIRE_COLORS = ["rouge", "bleu", "jaune", "blanc", "noir"];
@@ -18,6 +18,12 @@
   const SIMON_HEX = { rouge: "#ef4444", bleu: "#3b82f6", vert: "#22c55e", jaune: "#eab308" };
   const IND_LABELS = ["FRK", "CAR", "SND", "BOB", "CLR", "MSA"];
   const ALNUM = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const DICT = ["AIMER", "COEUR", "FLEUR", "PLAGE", "ROUGE", "NUAGE", "TERRE", "LIVRE", "PORTE", "TABLE", "CHIEN", "SUCRE", "ROSES", "LUNES", "MIELS"];
+  const MODULES = ["wires", "button", "keypad", "simon", "password"];
+  const DIFF = { facile: { count: 3, dur: 360000, label: "Facile" }, normal: { count: 4, dur: 300000, label: "Normal" }, expert: { count: 5, dur: 240000, label: "Expert" } };
+  let chosenDiff = localStorage.getItem("escape.diff") || "normal";
+  function activeModules() { return MODULES.slice(0, (esc && esc.count) || 4); }
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => document.querySelectorAll(s);
@@ -54,7 +60,25 @@
     const idx = shuffle([...Array(SYMBOLS.length).keys()], rng).slice(0, 4);
     const keypad = shuffle(idx.slice(), rng);
     const simon = []; for (let i = 0; i < 3; i++) simon.push(pick(SIMON));
-    return { edge, wires, button, keypad, simon };
+    const password = genPassword(rng);
+    return { edge, wires, button, keypad, simon, password };
+  }
+  function genPassword(rng) {
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const word = DICT[Math.floor(rng() * DICT.length)];
+      const cols = [];
+      for (let i = 0; i < 5; i++) {
+        const set = [word[i]];
+        while (set.length < 6) { const ch = LETTERS[Math.floor(rng() * 26)]; if (set.indexOf(ch) === -1) set.push(ch); }
+        cols.push(shuffle(set, rng));
+      }
+      const matches = DICT.filter((w) => w.split("").every((ch, i) => cols[i].indexOf(ch) !== -1));
+      if (matches.length === 1) return { cols, word };
+    }
+    // repli : garantit au moins une solution (le mot cible)
+    const word = DICT[0], cols = [];
+    for (let i = 0; i < 5; i++) { const set = [word[i]]; while (set.length < 6) { const ch = LETTERS[Math.floor(rng() * 26)]; if (set.indexOf(ch) === -1) set.push(ch); } cols.push(shuffle(set, rng)); }
+    return { cols, word };
   }
 
   /* ---------- Règles (le manuel doit correspondre EXACTEMENT) ---------- */
@@ -122,8 +146,13 @@
       stopSimon(); $("#bomb").hidden = true; $("#manual").hidden = true;
       const pre = $("#pre"); pre.hidden = false;
       pre.innerHTML = role === "dem"
-        ? `<div class="wait-note"><span class="em">🧨</span>Quand l'Expert a le manuel sous les yeux, arme la bombe. <b>4 modules</b>, 5:00, 3 erreurs = 💥.</div><button class="btn btn-danger big-cta" id="btn-arm">💣 Armer la bombe</button>`
+        ? `<div class="wait-note"><span class="em">🧨</span>Choisis la difficulté, puis arme la bombe quand l'Expert a le manuel sous les yeux. 3 erreurs = 💥.</div>` +
+          `<div class="diff-seg" id="diff-seg">` +
+          Object.keys(DIFF).map((k) => `<button data-d="${k}" class="${k === chosenDiff ? "on" : ""}">${DIFF[k].label}<small>${DIFF[k].count} modules · ${fmtT(DIFF[k].dur)}</small></button>`).join("") +
+          `</div><button class="btn btn-danger big-cta" id="btn-arm">💣 Armer la bombe</button>`
         : `<div class="wait-note"><span class="em">📖</span>Tu es l'Expert. Garde le manuel prêt et pose des questions au démineur (n° de série, piles, indicateur…).</div>`;
+      const seg = $("#diff-seg");
+      if (seg) seg.querySelectorAll("button").forEach((b) => { b.onclick = () => { chosenDiff = b.dataset.d; localStorage.setItem("escape.diff", chosenDiff); seg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); }; });
       const arm = $("#btn-arm"); if (arm) arm.onclick = armBomb;
       return;
     }
@@ -159,41 +188,66 @@
       `<div class="ew"><span class="ew-l">INDICATEUR</span><span class="ew-v ind ${e.indicator.lit ? "lit" : "off"}">● ${e.indicator.label}</span></div>`;
     wrap.appendChild(edge);
 
-    // Fils
-    const mW = moduleEl("wires", "🔌 Fils");
-    const wires = document.createElement("div"); wires.className = "wires";
-    bomb.wires.forEach((color, i) => { const w = document.createElement("div"); w.className = "wire"; w.dataset.i = i; w.innerHTML = `<span class="num">${i + 1}</span><span class="line w-${color}"></span><span class="scis">✂️</span>`; w.onclick = () => cutWire(i, bomb); wires.appendChild(w); });
-    mW.querySelector(".m-body").appendChild(wires); wrap.appendChild(mW);
+    const act = activeModules();
 
-    // Bouton
-    const mB = moduleEl("button", "🔘 Le bouton");
-    const bb = document.createElement("div"); bb.className = "big-button";
-    const btn = document.createElement("button"); btn.className = "the-button b-" + bomb.button.color; btn.textContent = bomb.button.label;
-    btn.onpointerdown = (ev) => { ev.preventDefault(); audio(); localProg.btnDown = Date.now(); };
-    btn.onpointerup = () => pressButton(bomb);
-    bb.appendChild(btn);
-    const hint = document.createElement("div"); hint.className = "button-hint"; hint.textContent = "Appui bref, ou maintien (≥ 1 s) selon le manuel";
-    bb.appendChild(hint); mB.querySelector(".m-body").appendChild(bb); wrap.appendChild(mB);
-
-    // Clavier
-    const mK = moduleEl("keypad", "⌨️ Clavier");
-    const kp = document.createElement("div"); kp.className = "keypad";
-    bomb.keypad.forEach((si) => { const bt = document.createElement("button"); bt.className = "sym"; bt.dataset.s = si; bt.textContent = SYMBOLS[si]; bt.onclick = () => pressSym(si, bomb, bt); kp.appendChild(bt); });
-    mK.querySelector(".m-body").appendChild(kp); wrap.appendChild(mK);
-
-    // Simon
-    const mS = moduleEl("simon", "🎨 Simon");
-    const sim = document.createElement("div"); sim.className = "simon";
-    SIMON.forEach((col) => { const pad = document.createElement("button"); pad.className = "simon-pad"; pad.dataset.c = col; pad.style.background = SIMON_HEX[col]; pad.onclick = () => pressSimon(col, bomb, pad); sim.appendChild(pad); });
-    mS.querySelector(".m-body").appendChild(sim);
-    const sh = document.createElement("div"); sh.className = "button-hint"; sh.textContent = "Regarde la séquence, puis appuie sur les couleurs TRADUITES par le manuel";
-    mS.querySelector(".m-body").appendChild(sh);
-    wrap.appendChild(mS);
-    startSimon(bomb);
+    if (act.indexOf("wires") !== -1) {
+      const mW = moduleEl("wires", "🔌 Fils");
+      const wires = document.createElement("div"); wires.className = "wires";
+      bomb.wires.forEach((color, i) => { const w = document.createElement("div"); w.className = "wire"; w.dataset.i = i; w.innerHTML = `<span class="num">${i + 1}</span><span class="line w-${color}"></span><span class="scis">✂️</span>`; w.onclick = () => cutWire(i, bomb); wires.appendChild(w); });
+      mW.querySelector(".m-body").appendChild(wires); wrap.appendChild(mW);
+    }
+    if (act.indexOf("button") !== -1) {
+      const mB = moduleEl("button", "🔘 Le bouton");
+      const bb = document.createElement("div"); bb.className = "big-button";
+      const btn = document.createElement("button"); btn.className = "the-button b-" + bomb.button.color; btn.textContent = bomb.button.label;
+      btn.onpointerdown = (ev) => { ev.preventDefault(); audio(); localProg.btnDown = Date.now(); };
+      btn.onpointerup = () => pressButton(bomb);
+      bb.appendChild(btn);
+      const hint = document.createElement("div"); hint.className = "button-hint"; hint.textContent = "Appui bref, ou maintien (≥ 1 s) selon le manuel";
+      bb.appendChild(hint); mB.querySelector(".m-body").appendChild(bb); wrap.appendChild(mB);
+    }
+    if (act.indexOf("keypad") !== -1) {
+      const mK = moduleEl("keypad", "⌨️ Clavier");
+      const kp = document.createElement("div"); kp.className = "keypad";
+      bomb.keypad.forEach((si) => { const bt = document.createElement("button"); bt.className = "sym"; bt.dataset.s = si; bt.textContent = SYMBOLS[si]; bt.onclick = () => pressSym(si, bomb, bt); kp.appendChild(bt); });
+      mK.querySelector(".m-body").appendChild(kp); wrap.appendChild(mK);
+    }
+    if (act.indexOf("simon") !== -1) {
+      const mS = moduleEl("simon", "🎨 Simon");
+      const sim = document.createElement("div"); sim.className = "simon";
+      SIMON.forEach((col) => { const pad = document.createElement("button"); pad.className = "simon-pad"; pad.dataset.c = col; pad.style.background = SIMON_HEX[col]; pad.onclick = () => pressSimon(col, bomb, pad); sim.appendChild(pad); });
+      mS.querySelector(".m-body").appendChild(sim);
+      const sh = document.createElement("div"); sh.className = "button-hint"; sh.textContent = "Regarde la séquence, puis appuie sur les couleurs TRADUITES par le manuel";
+      mS.querySelector(".m-body").appendChild(sh); wrap.appendChild(mS);
+      startSimon(bomb);
+    }
+    if (act.indexOf("password") !== -1) {
+      localProg.pwSel = [0, 0, 0, 0, 0];
+      const mP = moduleEl("password", "🔑 Mot de passe");
+      const pw = document.createElement("div"); pw.className = "password";
+      bomb.password.cols.forEach((col, i) => { const colEl = document.createElement("div"); colEl.className = "pw-col"; colEl.innerHTML = `<button class="pw-up" data-i="${i}">▲</button><div class="pw-let" data-i="${i}">${col[0]}</div><button class="pw-dn" data-i="${i}">▼</button>`; pw.appendChild(colEl); });
+      mP.querySelector(".m-body").appendChild(pw);
+      const vb = document.createElement("button"); vb.className = "btn btn-primary pw-validate"; vb.textContent = "Valider le code ✅"; vb.onclick = () => validatePw(bomb);
+      mP.querySelector(".m-body").appendChild(vb); wrap.appendChild(mP);
+      pw.querySelectorAll(".pw-up").forEach((bt) => (bt.onclick = () => cyclePw(+bt.dataset.i, 1, bomb)));
+      pw.querySelectorAll(".pw-dn").forEach((bt) => (bt.onclick = () => cyclePw(+bt.dataset.i, -1, bomb)));
+    }
+  }
+  function cyclePw(i, dir, bomb) {
+    if (!isArmed() || (esc.solved && esc.solved.password)) return;
+    localProg.pwSel[i] = (localProg.pwSel[i] + dir + 6) % 6;
+    const el = $(`#bomb .pw-let[data-i="${i}"]`); if (el) el.textContent = bomb.password.cols[i][localProg.pwSel[i]];
+  }
+  function validatePw(bomb) {
+    if (!isArmed() || (esc.solved && esc.solved.password)) return;
+    audio();
+    const sel = bomb.password.cols.map((col, i) => col[localProg.pwSel[i]]).join("");
+    if (DICT.indexOf(sel) !== -1) { solveModule("password"); toast("Mot de passe : ouvert ✓"); }
+    else strike("Mot de passe incorrect ! 💥");
   }
   function moduleEl(id, title) { const m = document.createElement("div"); m.className = "module"; m.dataset.m = id; m.innerHTML = `<div class="m-head"><span class="m-title">${title}</span><span class="m-status"></span></div><div class="m-body"></div>`; return m; }
   function updateBombLocks() {
-    ["wires", "button", "keypad", "simon"].forEach((id) => {
+    activeModules().forEach((id) => {
       const m = $(`.module[data-m="${id}"]`); if (!m) return;
       const solved = esc.solved && esc.solved[id];
       m.classList.toggle("solved", !!solved);
@@ -249,7 +303,7 @@
 
   async function solveModule(id) {
     esc.solved = esc.solved || {}; esc.solved[id] = true; vibrate(40); sndSolve(); updateBombLocks();
-    if (esc.solved.wires && esc.solved.button && esc.solved.keypad && esc.solved.simon) {
+    if (activeModules().every((m) => esc.solved[m])) {
       esc.status = "defused"; esc.score = normScore(esc.score); esc.score.defused++; stopSimon(); sndWin();
     }
     render(); await writeEsc();
@@ -291,13 +345,17 @@
         <li>Le démineur lit la <b>séquence</b> de couleurs qui clignote. Traduis-la, puis il appuie dans le même ordre.</li>
         <li><b>Si le n° de série contient une voyelle :</b> rouge→<b>bleu</b>, bleu→<b>rouge</b>, vert→<b>jaune</b>, jaune→<b>vert</b>.</li>
         <li><b>Sinon (pas de voyelle) :</b> rouge→<b>jaune</b>, jaune→<b>rouge</b>, bleu→<b>vert</b>, vert→<b>bleu</b>.</li>
-      </ul></div>`;
+      </ul></div>
+      <div class="man-block"><h3>🔑 Mot de passe (mode Expert)</h3><ul>
+        <li>Demande au démineur les <b>6 lettres de chaque colonne</b> (1→5). Le mot de passe est le <b>seul mot de la liste</b> dont la 1ère lettre est dans la colonne 1, la 2e dans la colonne 2, etc.</li>
+      </ul><div class="pw-dict">${DICT.join(" · ")}</div></div>`;
   }
   function updateExpStatus() {
     const el = $("#exp-status"); if (!el) return; const s = esc.solved || {};
+    const NAMES = { wires: "🔌 Fils", button: "🔘 Bouton", keypad: "⌨️ Clavier", simon: "🎨 Simon", password: "🔑 Mot de passe" };
     const line = (ok, name) => `<div class="row"><span>${name}</span><span>${ok ? "✅ résolu" : "⏳ en cours"}</span></div>`;
-    el.innerHTML = `<div style="font-weight:700;margin-bottom:6px">État de la bombe</div>` +
-      line(s.wires, "🔌 Fils") + line(s.button, "🔘 Bouton") + line(s.keypad, "⌨️ Clavier") + line(s.simon, "🎨 Simon") +
+    el.innerHTML = `<div style="font-weight:700;margin-bottom:6px">État de la bombe (${activeModules().length} modules)</div>` +
+      activeModules().map((m) => line(s[m], NAMES[m])).join("") +
       `<div class="row" style="border-top:1px solid rgba(148,163,184,.2);margin-top:6px;padding-top:6px"><span>💥 Erreurs</span><span>${esc.strikes || 0} / 3</span></div>`;
   }
 
@@ -317,7 +375,9 @@
   async function armBomb() {
     audio();
     const score = normScore(esc && esc.score);
-    esc = { seed: (Math.random() * 4294967296) >>> 0, status: "armed", startedAt: Date.now(), duration: DURATION, strikes: 0, solved: { wires: false, button: false, keypad: false, simon: false }, score, round: ((esc && esc.round) || 0) + 1 };
+    const d = DIFF[chosenDiff] || DIFF.normal;
+    const solved = {}; MODULES.slice(0, d.count).forEach((m) => (solved[m] = false));
+    esc = { seed: (Math.random() * 4294967296) >>> 0, status: "armed", startedAt: Date.now(), duration: d.dur, count: d.count, strikes: 0, solved, score, round: ((esc && esc.round) || 0) + 1 };
     endShown = -1; builtRound = -1; render();
     try { await writeEsc(); toast("💣 Bombe armée — communiquez !"); } catch (e) { toast("Connexion…"); }
   }

@@ -135,6 +135,10 @@ body {
   background-size: 300% 300%; animation: shimmer 7s linear infinite; opacity: .8;
 }
 @keyframes shimmer { 0%{background-position: 120% 0} 100%{background-position: -20% 0} }
+/* Balayage radar sur la grille ennemie */
+.board.fire::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: 12px; background: conic-gradient(from 0deg, transparent 0deg, rgba(52,211,153,.14) 26deg, transparent 55deg); animation: radar 4.5s linear infinite; }
+.board.fire.disabled::after { animation-duration: 7s; opacity: .5; }
+@keyframes radar { to { transform: rotate(360deg); } }
 
 .cell {
   position: relative; z-index: 1;

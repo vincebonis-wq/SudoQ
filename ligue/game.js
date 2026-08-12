@@ -6,7 +6,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v1";
+  const APP_VERSION = "v2";
   const $ = (s) => document.querySelector(s);
   const AV = ["#7c3aed", "#ec4899"];
 
@@ -18,7 +18,12 @@
     for (let i = 0; i < tries; i++) { try { const r = await fetch(url, opts); if (r.ok) return r; if (r.status !== 429 && r.status < 500) return r; e = new Error("HTTP " + r.status); } catch (x) { e = x; } await new Promise((res) => setTimeout(res, 350 * (i + 1))); }
     throw e || new Error("réseau");
   }
-  window.__FB = { async getSpace() { const r = await fbFetch(`${DB}/spaces/${encodeURIComponent(couple.code)}.json?_=${Date.now()}`, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); const t = await r.text(); return !t || t === "null" ? {} : JSON.parse(t); } };
+  window.__FB = {
+    async getSpace() { const r = await fbFetch(`${DB}/spaces/${encodeURIComponent(couple.code)}.json?_=${Date.now()}`, { cache: "no-store" }); if (!r.ok) throw new Error("HTTP " + r.status); const t = await r.text(); return !t || t === "null" ? {} : JSON.parse(t); },
+    async putBet(bet) { const r = await fbFetch(`${DB}/spaces/${encodeURIComponent(couple.code)}/ligue/bet.json`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(bet) }); if (!r.ok) throw new Error("HTTP " + r.status); },
+  };
+  const RANKS = [{ min: 0, name: "Bronze", ico: "🥉" }, { min: 60, name: "Argent", ico: "🥈" }, { min: 140, name: "Or", ico: "🥇" }, { min: 260, name: "Platine", ico: "💠" }, { min: 420, name: "Diamant", ico: "💎" }, { min: 640, name: "Maître", ico: "👑" }];
+  function rankFor(xp) { let r = RANKS[0]; RANKS.forEach((x) => { if (xp >= x.min) r = x; }); return r; }
   const store = () => window.__FB;
 
   let space = {};
@@ -78,17 +83,34 @@
 
     // Niveau couple
     const xp = s.total[0] + s.total[1];
-    const per = 40, lvl = Math.floor(xp / per) + 1, into = xp % per;
+    const per = 40, lvl = Math.floor(xp / per) + 1, into = xp % per, rk = rankFor(xp);
     $("#couple-lvl").innerHTML =
       `<div class="lv">Niveau ${lvl} 💞</div><div class="sub">${xp} points de couple cumulés</div>` +
       `<div class="bar"><i style="width:${Math.round((into / per) * 100)}%"></i></div>` +
-      `<div class="bar-label">${into} / ${per} vers le niveau ${lvl + 1}</div>`;
+      `<div class="bar-label">${into} / ${per} vers le niveau ${lvl + 1}</div>` +
+      `<div class="rank-badge"><span class="ri">${rk.ico}</span> Rang ${rk.name}</div>`;
 
-    // Trophées
+    renderBet();
     renderTrophies(s, lvl);
-
-    // Défi du jour
     renderDaily();
+  }
+  function renderBet() {
+    const bet = space.ligue && space.ligue.bet;
+    const el = $("#bet");
+    el.innerHTML =
+      (bet && bet.text
+        ? `<div class="bt">« ${escapeHtml(bet.text)} »</div>` + (bet.at ? `<div class="bmeta">Fixé le ${new Date(bet.at).toLocaleDateString("fr-FR")}</div>` : "")
+        : `<div class="bt empty">Aucun pari en cours. Ex : « Le perdant de la semaine cuisine ce week-end 🍝 »</div>`) +
+      `<button class="btn btn-primary" id="btn-bet">✏️ ${bet && bet.text ? "Modifier" : "Fixer"} le pari</button>`;
+    $("#btn-bet").onclick = setBet;
+  }
+  async function setBet() {
+    const cur = (space.ligue && space.ligue.bet && space.ligue.bet.text) || "";
+    const text = (prompt("Votre pari / gage en jeu :", cur) || "").trim();
+    if (text === "") return;
+    const bet = { text: text.slice(0, 140), at: Date.now() };
+    space.ligue = space.ligue || {}; space.ligue.bet = bet; renderBet();
+    try { await store().putBet(bet); toast("Pari enregistré 🎲"); } catch (e) { toast("Connexion…"); }
   }
   function brow(ico, name, sub, p0, p1) {
     return `<div class="brow"><span class="g">${ico} ${name}<small>${sub}</small></span><span class="v p0">${p0}</span><span class="v p1">${p1}</span></div>`;

@@ -128,6 +128,21 @@ body {
 .simon-pad.okflash { opacity: 1; box-shadow: 0 0 0 3px #fff inset; }
 .simon-pad.buzz { animation: nope .3s; }
 
+/* Sélecteur de difficulté */
+.diff-seg { display: flex; gap: 8px; margin: 4px 0 10px; }
+.diff-seg button { flex: 1; padding: 12px 6px; border-radius: 12px; border: 2px solid transparent; background: var(--surface); color: var(--text-dim); font-family: var(--font); font-weight: 700; font-size: 13.5px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; box-shadow: var(--shadow); }
+.diff-seg button small { font-weight: 500; font-size: 10.5px; opacity: .8; }
+.diff-seg button.on { border-color: var(--red); color: var(--text); }
+
+/* Module Mot de passe */
+.password { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.pw-col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.pw-col button { width: 100%; border: none; background: var(--surface-2); color: var(--text); border-radius: 8px; padding: 8px 0; font-size: 14px; cursor: pointer; }
+.pw-col button:active { transform: scale(.9); }
+.pw-let { font-family: var(--mono); font-size: 26px; font-weight: 700; color: var(--amber-2); }
+.pw-validate { width: 100%; margin-top: 12px; }
+.pw-dict { margin-top: 8px; font-family: var(--mono); font-size: 13px; line-height: 1.7; color: var(--text); letter-spacing: .5px; text-align: center; }
+
 /* Manuel (Expert) */
 .man-block.hi { border: 1px solid rgba(251,191,36,.35); background: linear-gradient(160deg, var(--surface), rgba(251,191,36,.07)); }
 .manual { display: grid; gap: 14px; }
