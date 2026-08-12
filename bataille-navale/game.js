@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v2";
+  const APP_VERSION = "v3";
   const FLEET = [
     { name: "Porte-avions", size: 5 },
     { name: "Croiseur", size: 4 },
@@ -65,6 +65,11 @@
   let drag = null; // { shipIndex, orientation, anchor:{r,c}, cells:[], valid:bool }
   let endShownForRound = -1;
   let seenEnemy = new Set(), seenMine = new Set(), seenRound = -1;
+  // Cadrage automatique de l'écran actif (mon tir / ma flotte) + attaque entrante
+  let curFocus = null;      // "enemy" (je tire) | "mine" (je regarde ma flotte) | null
+  let watching = false;     // je regarde une attaque adverse en cours
+  let attackTimer = null;   // fin de la séquence "sous attaque"
+  let holdUntil = 0;        // gèle le cadrage un instant (ex. après mon propre tir)
 
   /* ---------- Utils ---------- */
   const key = (r, c) => r + "," + c;
@@ -342,6 +347,34 @@
     if (rd !== seenRound) { seenRound = rd; seenEnemy = new Set(); seenMine = new Set(); }
   }
 
+  /* ---------- Cadrage / transitions d'écran ---------- */
+  function focusBoard(which, smooth) {
+    const eA = $("#enemy-area"), mA = $("#my-area");
+    if (!eA || !mA) return;
+    eA.classList.toggle("active", which === "enemy");
+    mA.classList.toggle("active", which === "mine");
+    if (which === curFocus) return; // déjà cadré : pas de re-scroll
+    curFocus = which;
+    const target = which === "mine" ? mA : eA;
+    try { target.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" }); }
+    catch (e) { try { target.scrollIntoView(); } catch (_) {} }
+  }
+  // On me tire dessus : montrer l'impact sur ma flotte, puis revenir à mon écran.
+  function triggerIncomingAttack() {
+    watching = true;
+    clearTimeout(attackTimer);
+    focusBoard("mine", true);
+    const mA = $("#my-area");
+    if (mA) { mA.classList.remove("under-attack"); void mA.offsetWidth; mA.classList.add("under-attack"); }
+    vibrate([25, 40, 25]);
+    attackTimer = setTimeout(() => {
+      watching = false;
+      if (mA) mA.classList.remove("under-attack");
+      const myTurn = navale && navale.status === "playing" && navale.turn === me;
+      focusBoard(myTurn ? "enemy" : "mine", true);
+    }, 1900);
+  }
+
   function renderBattle(myTurn) {
     resetSeenIfNewRound();
     const enemy = $("#enemy-board");
@@ -382,6 +415,7 @@
     if (me === null) { show("who"); renderWho(); return; }
     show("game"); renderSerie();
     const st = (navale && navale.status) || "setup";
+    if (st !== "playing" && st !== "finished") curFocus = null; // ré-armer le cadrage à l'entrée en bataille
     const myReady = !!(navale && navale.boards && navale.boards[me] && navale.boards[me].ready);
 
     if (st === "setup") {
@@ -399,6 +433,9 @@
       const myTurn = navale.turn === me;
       turnPill(myTurn ? "🎯 À toi de tirer !" : "⏳ Au tour de " + oppName(), myTurn ? "you" : "wait");
       renderBattle(myTurn);
+      // Cadrer l'écran en cours : mon tir (flotte ennemie) quand c'est mon tour,
+      // ma flotte quand j'attends/subis. Gelé juste après mon propre tir.
+      if (!watching && Date.now() >= holdUntil) focusBoard(myTurn ? "enemy" : "mine", true);
     } else if (st === "finished") {
       $("#setup").hidden = true; $("#battle").hidden = false;
       renderBattle(false); maybeShowEnd();
@@ -441,6 +478,7 @@
     } else if (sunkShip) { setTimeout(sndSink, 130); toast("💥 Coulé — " + shipName(sunkShip.length) + " !", 2600); vibrate([50, 40, 90]); }
     else if (hit) { setTimeout(sndHit, 100); toast("💥 Touché !"); vibrate(60); }
     else { navale.turn = 1 - me; meta.turn = 1 - me; setTimeout(sndMiss, 100); toast("💧 Manqué"); vibrate(20); }
+    holdUntil = Date.now() + 1400; // rester sur la flotte ennemie pour voir le résultat de mon tir
     render();
     try {
       await store().put("/shots/" + me, shots);
@@ -485,6 +523,8 @@
     if (!couple.code || me === null) { render(); return; }
     if (drag) return; // ne pas rerender pendant un glisser
     setDot("syncing");
+    const prevOpp = Object.keys(shotsOf(1 - me)).length;
+    const wasPlaying = !!(navale && navale.status === "playing");
     try {
       const rem = await store().get("");
       navale = rem;
@@ -493,12 +533,25 @@
         navale.status = "playing"; navale.turn = navale.turn || 0;
         await store().patch("", { status: "playing", turn: navale.turn });
       }
-      setDot("ok"); lastErr = false; render();
+      setDot("ok"); lastErr = false;
+      // Détecter une attaque adverse fraîche pour lancer la séquence "sous attaque"
+      const newOpp = Object.keys(shotsOf(1 - me)).length;
+      if (wasPlaying && navale && navale.status === "playing" && newOpp > prevOpp) triggerIncomingAttack();
+      render();
     } catch (e) { setDot("error"); if (!lastErr) { toast("Synchro indisponible — réessai…"); lastErr = true; } }
   }
   let pollId = null;
-  function startPolling() { stopPolling(); pollId = setInterval(() => { if (document.visibilityState === "visible" && !drag) pull(); }, 2500); }
-  function stopPolling() { if (pollId) clearInterval(pollId); pollId = null; }
+  // Rafraîchissement plus rapide pendant la bataille pour un ressenti temps réel.
+  function pollDelay() { return (navale && navale.status === "playing") ? 1200 : 2600; }
+  function startPolling() {
+    stopPolling();
+    const tick = () => {
+      if (document.visibilityState === "visible" && !drag) pull();
+      pollId = setTimeout(tick, pollDelay());
+    };
+    pollId = setTimeout(tick, pollDelay());
+  }
+  function stopPolling() { if (pollId) { clearTimeout(pollId); pollId = null; } }
 
   /* ---------- Thème ---------- */
   function applyTheme(theme) {

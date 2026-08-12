@@ -9,7 +9,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>Bataille navale · SudoQ</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=4" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%A2%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
@@ -70,15 +70,15 @@
 
         <!-- Combat -->
         <section id="battle" hidden>
-          <div class="board-title"><span>🎯 Flotte ennemie</span><span class="left" id="enemy-left"></span></div>
-          <div class="play-area">
+          <div class="board-title" id="enemy-title"><span>🎯 Flotte ennemie</span><span class="left" id="enemy-left"></span></div>
+          <div class="play-area" id="enemy-area">
             <div class="corner"></div>
             <div class="cols" id="enemy-cols"></div>
             <div class="rows" id="enemy-rows"></div>
             <div class="board fire aim" id="enemy-board"></div>
           </div>
-          <div class="board-title"><span>🛡️ Ta flotte</span><span class="left" id="my-left"></span></div>
-          <div class="play-area">
+          <div class="board-title" id="my-title"><span>🛡️ Ta flotte</span><span class="left" id="my-left"></span></div>
+          <div class="play-area" id="my-area">
             <div class="corner"></div>
             <div class="cols" id="my-cols"></div>
             <div class="rows" id="my-rows"></div>
@@ -106,6 +106,6 @@
 
     <div class="toast" id="toast" hidden></div>
 
-    <script src="game.js?v=3"></script>
+    <script src="game.js?v=4"></script>
   </body>
 </html>

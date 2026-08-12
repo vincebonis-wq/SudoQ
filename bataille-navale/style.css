@@ -111,7 +111,23 @@ body {
 /* Zone de jeu avec coordonnées */
 .play-area {
   display: grid; grid-template-columns: 18px 1fr; grid-template-rows: 16px 1fr; gap: 3px;
-  margin-bottom: 16px;
+  margin-bottom: 16px; scroll-margin-top: 78px; scroll-margin-bottom: 24px;
+  border-radius: 14px; transition: box-shadow .35s ease, transform .35s ease, opacity .35s ease;
+}
+/* Écran en cours : la zone active ressort, l'autre recule en retrait (uniquement si une zone est active) */
+#battle:has(.play-area.active) .play-area:not(.active) { opacity: .6; transform: scale(.985); }
+#battle .play-area.active { box-shadow: 0 0 0 2px rgba(52,211,153,.35), 0 14px 40px rgba(0,0,0,.4); }
+#battle .board-title { transition: opacity .35s ease; opacity: .6; }
+/* Le titre précède son play-area dans le DOM : on éclaire celui de la zone active via :has */
+#battle:has(#enemy-area.active) #enemy-title, #battle:has(#my-area.active) #my-title { opacity: 1; }
+/* Flash « sous attaque » sur ma flotte */
+.play-area.under-attack { animation: under-attack 1.7s ease; }
+@keyframes under-attack {
+  0% { box-shadow: 0 0 0 2px rgba(244,63,94,0), 0 14px 40px rgba(0,0,0,.4); }
+  12% { box-shadow: 0 0 0 3px rgba(244,63,94,.9), 0 0 34px rgba(244,63,94,.6); }
+  30% { box-shadow: 0 0 0 2px rgba(244,63,94,.35), 0 0 20px rgba(244,63,94,.3); }
+  55% { box-shadow: 0 0 0 3px rgba(244,63,94,.7), 0 0 30px rgba(244,63,94,.5); }
+  100% { box-shadow: 0 0 0 2px rgba(52,211,153,.35), 0 14px 40px rgba(0,0,0,.4); }
 }
 .play-area .corner { grid-area: 1 / 1; }
 .play-area .cols { grid-area: 1 / 2; display: grid; grid-template-columns: repeat(10, 1fr); gap: 3px; }
