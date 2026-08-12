@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#0a0e17" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Désamorçage · SudoQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=1" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A3%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="../index.html" title="Retour aux jeux">
+          <span class="mark">💣</span>
+          <span class="name">Désa<span>morçage</span></span>
+        </a>
+        <div class="topbar-right">
+          <button class="icon-btn" id="btn-sync" title="Synchro"><span id="sync-dot" class="sync-dot off">●</span></button>
+          <button class="icon-btn" id="btn-theme" title="Thème">🌙</button>
+        </div>
+      </header>
+
+      <!-- Passerelle -->
+      <div id="gate" class="card" hidden>
+        <h2>💕 Espace de couple requis</h2>
+        <p>Ce jeu utilise le même espace que SudoQ. Ouvre d'abord SudoQ, crée (ou rejoins) votre espace de couple, puis reviens ici.</p>
+        <a class="btn btn-primary" href="../index.html">Ouvrir SudoQ</a>
+      </div>
+
+      <!-- Choix du profil -->
+      <div id="who" class="card" hidden>
+        <h2>Qui es-tu ?</h2>
+        <p>Chacun choisit son profil sur son téléphone.</p>
+        <div class="pick-btns" id="who-btns"></div>
+      </div>
+
+      <!-- Choix du rôle -->
+      <div id="role" class="card" hidden>
+        <h2>Choisis ton rôle</h2>
+        <p>Il faut <b>un Démineur et un Expert</b> (un rôle chacun). Vous devrez vous <b>parler</b> pour réussir&nbsp;!</p>
+        <div class="pick-btns">
+          <button class="pick" data-role="dem">
+            <span class="em">🧨</span>
+            <span class="t"><b>Démineur</b><span>Je vois la bombe, je manipule. Je ne connais pas les règles.</span></span>
+          </button>
+          <button class="pick" data-role="exp">
+            <span class="em">📖</span>
+            <span class="t"><b>Expert</b><span>J'ai le manuel avec toutes les règles. Je guide le démineur.</span></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Jeu -->
+      <main id="game" hidden>
+        <div class="hud">
+          <span class="role-tag" id="role-tag"></span>
+          <span class="timer" id="timer">05:00</span>
+          <span class="strikes" id="strikes"></span>
+        </div>
+        <div class="serie-mini" id="serie"></div>
+
+        <!-- Avant d'armer -->
+        <div id="pre" hidden></div>
+
+        <!-- Vue Démineur : la bombe -->
+        <div id="bomb" class="bomb" hidden></div>
+
+        <!-- Vue Expert : le manuel -->
+        <div id="manual" class="manual" hidden></div>
+      </main>
+
+      <p class="app-version" id="app-version"></p>
+    </div>
+
+    <!-- Modale fin -->
+    <div class="modal-backdrop" id="end-modal" hidden>
+      <div class="modal">
+        <div class="confetti" id="confetti"></div>
+        <div class="big" id="end-emoji">💥</div>
+        <h2 id="end-title">Boum…</h2>
+        <p id="end-sub"></p>
+        <div class="actions">
+          <button class="btn btn-primary" id="btn-rematch">Nouvelle bombe 🔁</button>
+          <a class="btn btn-ghost" href="../index.html">Retour aux jeux</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+    <script src="game.js?v=1"></script>
+  </body>
+</html>

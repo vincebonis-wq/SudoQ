@@ -6,7 +6,7 @@
 
   const { LEVELS, BAND_META, getLevelPuzzle, isSafe } = window.Sudoku;
   const STORE_KEY = "sudoq.v1";
-  const APP_VERSION = "v14";
+  const APP_VERSION = "v15";
 
   /* ----------------- État persistant ----------------- */
   const defaultState = {
