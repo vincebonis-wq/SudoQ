@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#140a1f" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Capsules temporelles · SudoQ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css?v=1" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%8F%B3%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="brand" href="../index.html" title="Retour aux jeux">
+          <span class="mark">⏳</span>
+          <span class="name">Capsules <span>temporelles</span></span>
+        </a>
+        <div class="topbar-right">
+          <button class="icon-btn" id="btn-sync" title="Synchro"><span id="sync-dot" class="sync-dot off">●</span></button>
+          <button class="icon-btn" id="btn-theme" title="Thème">🌙</button>
+        </div>
+      </header>
+
+      <div id="gate" class="card" hidden>
+        <h2>💕 Espace de couple requis</h2>
+        <p>Les capsules utilisent le même espace que SudoQ. Ouvre d'abord SudoQ, crée (ou rejoins) votre espace, puis reviens.</p>
+        <a class="btn btn-primary" href="../index.html">Ouvrir SudoQ</a>
+      </div>
+
+      <div id="who" class="card" hidden>
+        <h2>Qui es-tu ?</h2>
+        <p>Pour signer tes capsules 💌</p>
+        <div class="who-btns" id="who-btns"></div>
+      </div>
+
+      <main id="main" hidden>
+        <div class="hero">
+          <h1>Capsules temporelles</h1>
+          <p>Écris un mot, une promesse, un secret… scellé jusqu'à une date que tu choisis. 💌</p>
+        </div>
+
+        <button class="btn btn-primary new-cta" id="btn-new">＋ Nouvelle capsule</button>
+
+        <div class="form" id="form" hidden>
+          <div class="field">
+            <label>Pour qui ?</label>
+            <div class="seg" id="seg-to">
+              <button data-to="nous" class="on">💞 Nous deux</button>
+              <button data-to="other">💌 L'autre</button>
+            </div>
+          </div>
+          <div class="field">
+            <label>Titre (optionnel)</label>
+            <input type="text" id="c-title" maxlength="60" placeholder="Ex : Notre 1er anniversaire" />
+          </div>
+          <div class="field">
+            <label>Message</label>
+            <textarea id="c-msg" maxlength="1500" placeholder="Ce que tu veux dire au futur…"></textarea>
+          </div>
+          <div class="field">
+            <label>S'ouvre le</label>
+            <input type="date" id="c-date" />
+          </div>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary btn-block" id="btn-seal">🔒 Sceller la capsule</button>
+            <button class="btn btn-ghost" id="btn-cancel">Annuler</button>
+          </div>
+        </div>
+
+        <div class="caps" id="caps"></div>
+      </main>
+
+      <p class="app-version" id="app-version"></p>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+    <script src="game.js?v=1"></script>
+  </body>
+</html>
