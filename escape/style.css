@@ -111,7 +111,25 @@ body {
 .sym.buzz { animation: nope .3s; }
 @keyframes nope { 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
 
+/* Edgework (n° série, piles, indicateur) */
+.edgework { display: flex; gap: 8px; background: linear-gradient(160deg, #0e1526, #131d33); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+.edgework .ew { flex: 1; text-align: center; }
+.edgework .ew-l { display: block; font-size: 9px; font-weight: 700; letter-spacing: .5px; color: var(--text-dim); margin-bottom: 4px; }
+.edgework .ew-v { font-size: 15px; font-weight: 700; }
+.edgework .ew-v.serial { font-family: var(--mono); letter-spacing: 2px; color: var(--amber-2); }
+.edgework .ind.lit { color: var(--green); text-shadow: 0 0 8px rgba(52,211,153,.8); }
+.edgework .ind.off { color: #4b5563; }
+
+/* Simon */
+.simon { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.simon-pad { aspect-ratio: 1/1; border: 3px solid rgba(0,0,0,.3); border-radius: 14px; cursor: pointer; opacity: .5; transition: opacity .12s, transform .1s, box-shadow .12s; }
+.simon-pad:active { transform: scale(.94); }
+.simon-pad.flash { opacity: 1; box-shadow: 0 0 22px 4px currentColor, inset 0 0 20px rgba(255,255,255,.5); transform: scale(1.05); }
+.simon-pad.okflash { opacity: 1; box-shadow: 0 0 0 3px #fff inset; }
+.simon-pad.buzz { animation: nope .3s; }
+
 /* Manuel (Expert) */
+.man-block.hi { border: 1px solid rgba(251,191,36,.35); background: linear-gradient(160deg, var(--surface), rgba(251,191,36,.07)); }
 .manual { display: grid; gap: 14px; }
 .man-block { background: var(--surface); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
 .man-block h3 { font-size: 14.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
