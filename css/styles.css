@@ -279,6 +279,43 @@ body:not(.light) .level-card .lv-best.done { color: var(--gold); }
 
 .top-nav { display: flex; justify-content: center; gap: 10px; margin-bottom: 18px; }
 .top-nav .btn { flex: 1; max-width: 240px; position: relative; }
+
+/* ---------- Barre des jeux (en haut) ---------- */
+.games-eyebrow {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+  color: var(--text-dim); margin: 4px 4px 9px;
+}
+.games-bar {
+  display: flex; gap: 10px; overflow-x: auto; margin: 0 -14px 18px; padding: 2px 14px 6px;
+  scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.games-bar::-webkit-scrollbar { display: none; }
+.game-chip {
+  flex: 0 0 auto; scroll-snap-align: start;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px 10px 10px; border-radius: 15px;
+  background: var(--surface); border: 1px solid rgba(148,163,184,.14);
+  box-shadow: var(--shadow); text-decoration: none; color: var(--text);
+  transition: transform .15s ease, border-color .2s ease;
+}
+.game-chip:active { transform: scale(.95); }
+.game-chip .gc-ico {
+  font-size: 21px; width: 40px; height: 40px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 12px; background: var(--accent-soft);
+}
+.game-chip .gc-txt {
+  display: flex; flex-direction: column; line-height: 1.15;
+  font-weight: 600; font-size: 14.5px; white-space: nowrap;
+}
+.game-chip .gc-txt small { font-weight: 500; font-size: 11px; color: var(--text-dim); }
+.game-chip--star {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent; color: #fff;
+  box-shadow: 0 8px 24px rgba(124,58,237,.42);
+}
+.game-chip--star .gc-ico { background: rgba(255,255,255,.2); }
+.game-chip--star .gc-txt small { color: rgba(255,255,255,.82); }
 .badge {
   position: absolute; top: -7px; right: -7px;
   min-width: 21px; height: 21px; padding: 0 6px;

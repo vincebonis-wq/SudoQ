@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="css/styles.css?v=15" />
+    <link rel="stylesheet" href="css/styles.css?v=16" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
   </head>
   <body>
@@ -44,6 +44,26 @@
           <button class="btn btn-primary" id="btn-scoreboard">🏆 Records</button>
           <button class="btn btn-outline" id="btn-chat">💬 Messages<span class="badge" id="chat-badge" hidden></span></button>
         </div>
+
+        <div class="games-eyebrow">🎮 Nos jeux à deux</div>
+        <nav class="games-bar" aria-label="Nos jeux à deux">
+          <a class="game-chip game-chip--star" href="ligue/index.html">
+            <span class="gc-ico">🏆</span>
+            <span class="gc-txt">Ligue<small>de couple</small></span>
+          </a>
+          <a class="game-chip" href="bataille-navale/index.html">
+            <span class="gc-ico">🚢</span>
+            <span class="gc-txt">Bataille<small>navale</small></span>
+          </a>
+          <a class="game-chip" href="escape/index.html">
+            <span class="gc-ico">💣</span>
+            <span class="gc-txt">Désamorçage<small>coopératif</small></span>
+          </a>
+          <a class="game-chip" href="capsules/index.html">
+            <span class="gc-ico">⏳</span>
+            <span class="gc-txt">Capsules<small>temporelles</small></span>
+          </a>
+        </nav>
         <div class="sync-banner" id="sync-banner" hidden>
           <div class="sync-banner-txt">
             <strong>💕 Synchronisez vos records</strong>
@@ -52,16 +72,6 @@
           <button class="btn btn-primary" id="btn-open-sync">Activer</button>
         </div>
         <div class="level-grid" id="level-grid"></div>
-        <div class="top-nav" style="margin-top:20px">
-          <a class="btn btn-primary" href="ligue/index.html" style="text-decoration:none;text-align:center;flex-basis:100%;max-width:none">🏆 Ligue de couple</a>
-        </div>
-        <div class="top-nav" style="margin-top:10px">
-          <a class="btn btn-outline" href="bataille-navale/index.html" style="text-decoration:none;text-align:center">🚢 Bataille navale</a>
-          <a class="btn btn-outline" href="escape/index.html" style="text-decoration:none;text-align:center">💣 Désamorçage</a>
-        </div>
-        <div class="top-nav" style="margin-top:10px">
-          <a class="btn btn-outline" href="capsules/index.html" style="text-decoration:none;text-align:center">⏳ Capsules</a>
-        </div>
         <p class="app-version" id="app-version"></p>
       </main>
 
@@ -225,8 +235,8 @@
 
     <div class="toast" id="toast" hidden></div>
 
-    <script src="js/sudoku.js?v=15"></script>
-    <script src="js/sync.js?v=15"></script>
-    <script src="js/app.js?v=15"></script>
+    <script src="js/sudoku.js?v=16"></script>
+    <script src="js/sync.js?v=16"></script>
+    <script src="js/app.js?v=16"></script>
   </body>
 </html>
