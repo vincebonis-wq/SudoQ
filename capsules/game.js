@@ -6,7 +6,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v1";
+  const APP_VERSION = "v2";
   const $ = (s) => document.querySelector(s);
 
   function getCouple() { try { return JSON.parse(localStorage.getItem("couple") || "{}"); } catch (e) { return {}; } }
@@ -59,7 +59,7 @@
     const em = ["🧑", "👩"];
     names().forEach((n, i) => {
       const b = document.createElement("button"); b.className = "btn btn-primary"; b.textContent = em[i] + " " + n;
-      b.onclick = () => { me = i; localStorage.setItem("capsules.me", String(i)); render(); pull(); };
+      b.onclick = () => { me = i; localStorage.setItem("capsules.me", String(i)); render(); pull(); startPolling(); startStream(); };
       wrap.appendChild(b);
     });
   }
@@ -147,7 +147,31 @@
     } catch (e) { setDot("error"); if (!lastErr) { toast("Synchro indisponible — réessai…"); lastErr = true; } }
   }
   let pollId = null;
-  function startPolling() { if (pollId) clearInterval(pollId); pollId = setInterval(() => { if (document.visibilityState === "visible") pull(); }, 6000); }
+  // Le polling sert aussi d'horloge pour révéler les capsules à échéance :
+  // on le garde à un rythme modéré même quand le stream est actif.
+  function pollDelay() { return streamHealthy ? 15000 : 6000; }
+  function startPolling() {
+    if (pollId) clearTimeout(pollId);
+    const poll = () => { if (document.visibilityState === "visible") pull(); pollId = setTimeout(poll, pollDelay()); };
+    pollId = setTimeout(poll, pollDelay());
+  }
+
+  /* ---------- Temps réel (streaming SSE) ---------- */
+  let streamSub = null, streamHealthy = false, streamRetry = null, pullTimer = null;
+  function schedulePull() { if (pullTimer) return; pullTimer = setTimeout(() => { pullTimer = null; pull(); }, 120); }
+  function startStream() {
+    stopStream();
+    if (!couple.code || me === null || !window.Realtime) return;
+    streamSub = window.Realtime.subscribe(base() + ".json", {
+      onChange: () => { streamHealthy = true; schedulePull(); },
+      onError: () => { streamHealthy = false; if (!streamRetry) streamRetry = setTimeout(() => { streamRetry = null; startStream(); }, 20000); },
+    });
+  }
+  function stopStream() {
+    if (streamSub) { streamSub.close(); streamSub = null; }
+    if (streamRetry) { clearTimeout(streamRetry); streamRetry = null; }
+    streamHealthy = false;
+  }
 
   function applyTheme(t) { document.body.classList.toggle("light", t === "light"); $("#btn-theme").textContent = t === "light" ? "☀️" : "🌙"; $('meta[name="theme-color"]').setAttribute("content", t === "light" ? "#fdf2f8" : "#140a1f"); localStorage.setItem("capsules.theme", t); }
   function initTheme() { let t = localStorage.getItem("capsules.theme"); if (!t) { try { t = JSON.parse(localStorage.getItem("sudoq.v1") || "{}").theme || "dark"; } catch (e) { t = "dark"; } } applyTheme(t); }
@@ -162,8 +186,8 @@
     $("#btn-seal").onclick = sealCapsule;
     document.querySelectorAll("#seg-to button").forEach((b) => { b.onclick = () => { formTo = b.dataset.to; document.querySelectorAll("#seg-to button").forEach((x) => x.classList.toggle("on", x === b)); }; });
     render();
-    if (couple.code && me !== null) { pull(); startPolling(); }
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+    if (couple.code && me !== null) { pull(); startPolling(); startStream(); }
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { pull(); if (me !== null && !streamSub) startStream(); } });
   }
 
   window.__caps = { untilText };

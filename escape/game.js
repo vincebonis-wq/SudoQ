@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v3";
+  const APP_VERSION = "v4";
   const DURATION = 300000;
   const SYMBOLS = ["🌟", "🌀", "🔺", "🟣", "🍀", "🌸", "☢️", "⚡", "✈️", "⚓", "💀", "✂️"];
   const WIRE_COLORS = ["rouge", "bleu", "jaune", "blanc", "noir"];
@@ -398,9 +398,14 @@
     } catch (e) { setDot("error"); if (!lastErr) { toast("Synchro indisponible — réessai…"); lastErr = true; } }
   }
   let pollId = null, tickId = null, lastTickSec = -1;
+  function pollDelay() { return streamHealthy ? 20000 : 1500; }
   function startLoops() {
     stopLoops();
-    pollId = setInterval(() => { if (document.visibilityState === "visible") pull(); }, 1500);
+    const poll = () => {
+      if (document.visibilityState === "visible") pull();
+      pollId = setTimeout(poll, pollDelay());
+    };
+    pollId = setTimeout(poll, pollDelay());
     tickId = setInterval(() => {
       updateHud();
       const rem = remaining();
@@ -410,8 +415,26 @@
         if (rem <= 0) { esc.status = "exploded"; esc.score = normScore(esc.score); esc.score.exploded++; stopSimon(); sndBoom(); writeEsc(); render(); }
       }
     }, 250);
+    startStream();
   }
-  function stopLoops() { if (pollId) clearInterval(pollId); if (tickId) clearInterval(tickId); pollId = tickId = null; }
+  function stopLoops() { if (pollId) clearTimeout(pollId); if (tickId) clearInterval(tickId); pollId = tickId = null; }
+
+  /* ---------- Temps réel (streaming SSE) ---------- */
+  let streamSub = null, streamHealthy = false, streamRetry = null, pullTimer = null;
+  function schedulePull() { if (pullTimer) return; pullTimer = setTimeout(() => { pullTimer = null; pull(); }, 60); }
+  function startStream() {
+    stopStream();
+    if (!couple.code || !role || !window.Realtime) return;
+    streamSub = window.Realtime.subscribe(base() + ".json", {
+      onChange: () => { streamHealthy = true; schedulePull(); },
+      onError: () => { streamHealthy = false; if (!streamRetry) streamRetry = setTimeout(() => { streamRetry = null; startStream(); }, 20000); },
+    });
+  }
+  function stopStream() {
+    if (streamSub) { streamSub.close(); streamSub = null; }
+    if (streamRetry) { clearTimeout(streamRetry); streamRetry = null; }
+    streamHealthy = false;
+  }
 
   function applyTheme(t) { document.body.classList.toggle("light", t === "light"); $("#btn-theme").textContent = t === "light" ? "☀️" : "🌙"; $('meta[name="theme-color"]').setAttribute("content", t === "light" ? "#eef2fb" : "#0a0e17"); localStorage.setItem("escape.theme", t); }
   function initTheme() { let t = localStorage.getItem("escape.theme"); if (!t) { try { t = JSON.parse(localStorage.getItem("sudoq.v1") || "{}").theme || "dark"; } catch (e) { t = "dark"; } } applyTheme(t); }
@@ -425,7 +448,7 @@
     $("#btn-rematch").onclick = rematch;
     render();
     if (couple.code && role) { pull(); startLoops(); }
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { pull(); if (role && !streamSub) startStream(); } });
   }
 
   window.__escape = { genBomb, wireToCut, buttonAction, keypadOrder, simonMap, SYMBOLS, SIMON, mulberry32 };

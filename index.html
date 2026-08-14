@@ -16,6 +16,11 @@
     />
     <link rel="stylesheet" href="css/styles.css?v=16" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%A9%3C/text%3E%3C/svg%3E" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SudoQ" />
   </head>
   <body>
     <div id="app">
@@ -237,6 +242,12 @@
 
     <script src="js/sudoku.js?v=16"></script>
     <script src="js/sync.js?v=16"></script>
+    <script src="js/realtime.js?v=16"></script>
     <script src="js/app.js?v=16"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+      }
+    </script>
   </body>
 </html>

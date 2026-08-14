@@ -6,7 +6,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v2";
+  const APP_VERSION = "v3";
   const $ = (s) => document.querySelector(s);
   const AV = ["#7c3aed", "#ec4899"];
 
@@ -162,7 +162,29 @@
     catch (e) { setDot("error"); if (!lastErr) { toast("Synchro indisponible — réessai…"); lastErr = true; } }
   }
   let pollId = null;
-  function startPolling() { if (pollId) clearInterval(pollId); pollId = setInterval(() => { if (document.visibilityState === "visible") pull(); }, 10000); }
+  function pollDelay() { return streamHealthy ? 30000 : 10000; }
+  function startPolling() {
+    if (pollId) clearTimeout(pollId);
+    const poll = () => { if (document.visibilityState === "visible") pull(); pollId = setTimeout(poll, pollDelay()); };
+    pollId = setTimeout(poll, pollDelay());
+  }
+
+  /* ---------- Temps réel (streaming SSE) ---------- */
+  let streamSub = null, streamHealthy = false, streamRetry = null, pullTimer = null;
+  function schedulePull() { if (pullTimer) return; pullTimer = setTimeout(() => { pullTimer = null; pull(); }, 120); }
+  function startStream() {
+    stopStream();
+    if (!couple.code || !window.Realtime) return;
+    streamSub = window.Realtime.subscribe(`${DB}/spaces/${encodeURIComponent(couple.code)}.json`, {
+      onChange: () => { streamHealthy = true; schedulePull(); },
+      onError: () => { streamHealthy = false; if (!streamRetry) streamRetry = setTimeout(() => { streamRetry = null; startStream(); }, 20000); },
+    });
+  }
+  function stopStream() {
+    if (streamSub) { streamSub.close(); streamSub = null; }
+    if (streamRetry) { clearTimeout(streamRetry); streamRetry = null; }
+    streamHealthy = false;
+  }
 
   function applyTheme(t) { document.body.classList.toggle("light", t === "light"); $("#btn-theme").textContent = t === "light" ? "☀️" : "🌙"; $('meta[name="theme-color"]').setAttribute("content", t === "light" ? "#eef2fb" : "#0d1220"); localStorage.setItem("ligue.theme", t); }
   function initTheme() { let t = localStorage.getItem("ligue.theme"); if (!t) { try { t = JSON.parse(localStorage.getItem("sudoq.v1") || "{}").theme || "dark"; } catch (e) { t = "dark"; } } applyTheme(t); }
@@ -173,8 +195,8 @@
     $("#btn-theme").onclick = () => applyTheme(document.body.classList.contains("light") ? "dark" : "light");
     $("#btn-sync").onclick = () => { toast("Actualisation…"); pull(); };
     render();
-    if (couple.code) { pull(); startPolling(); }
-    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") pull(); });
+    if (couple.code) { pull(); startPolling(); startStream(); }
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { pull(); if (!streamSub) startStream(); } });
   }
 
   window.__ligue = { compute: () => compute() };

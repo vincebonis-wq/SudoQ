@@ -1092,13 +1092,48 @@
   function startPolling() {
     stopPolling();
     if (!state.syncCode) return;
-    pollId = setInterval(() => {
+    const poll = () => {
       if (document.visibilityState === "visible") cloudSync(false);
-    }, 12000);
+      pollId = setTimeout(poll, streamHealthy ? 30000 : 12000);
+    };
+    pollId = setTimeout(poll, streamHealthy ? 30000 : 12000);
   }
   function stopPolling() {
-    if (pollId) clearInterval(pollId);
+    if (pollId) clearTimeout(pollId);
     pollId = null;
+  }
+
+  /* ---------- Temps réel (streaming SSE) ----------
+   * Le stream Firebase pousse en direct les nouveaux records / messages ; le
+   * polling ci-dessus reste comme filet de sécurité (rythme ralenti si le
+   * stream fonctionne). Purement additif : si EventSource est absent ou bloqué,
+   * on retombe sur le polling habituel. */
+  let streamSub = null, streamHealthy = false, streamRetry = null, syncTimer = null;
+  function scheduleSync() { if (syncTimer) return; syncTimer = setTimeout(() => { syncTimer = null; cloudSync(false); }, 150); }
+  function startStream() {
+    stopStream();
+    if (!state.syncCode || !window.Realtime || !window.Sync || !Sync.streamUrl) return;
+    streamSub = window.Realtime.subscribe(Sync.streamUrl(state.syncCode), {
+      onChange: (payload) => {
+        // Ignorer les évènements des autres jeux (navale, escape, capsules,
+        // ligue) : SudoQ ne relit que pour records / messages / players.
+        if (payload && typeof payload.path === "string") {
+          const top = payload.path.split("/").filter(Boolean)[0];
+          if (top && ["navale", "escape", "capsules", "ligue"].indexOf(top) !== -1) return;
+        }
+        streamHealthy = true;
+        scheduleSync();
+      },
+      onError: () => {
+        streamHealthy = false;
+        if (!streamRetry) streamRetry = setTimeout(() => { streamRetry = null; startStream(); }, 20000);
+      },
+    });
+  }
+  function stopStream() {
+    if (streamSub) { streamSub.close(); streamSub = null; }
+    if (streamRetry) { clearTimeout(streamRetry); streamRetry = null; }
+    streamHealthy = false;
   }
 
   async function createSpace() {
@@ -1112,6 +1147,7 @@
       saveState();
       updateSyncUI();
       startPolling();
+      startStream();
       toast("Espace créé ✓ Partage ton code 💕");
     } catch (e) {
       lastSyncErrorMsg = (e && e.message) || "inconnue";
@@ -1143,6 +1179,7 @@
       await cloudSync(true); // fusionne les données existantes et pousse les nôtres
       updateSyncUI();
       startPolling();
+      startStream();
       const nb = remote && remote.records ? Object.keys(remote.records).length : 0;
       toast("Espace rejoint ✓ " + (nb ? nb + " niveau(x) récupéré(s) 💕" : "Synchronisé 💕"));
     } catch (e) {
@@ -1275,9 +1312,13 @@
     if (state.syncCode) {
       cloudSync(false);
       startPolling();
+      startStream();
     }
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible" && state.syncCode) cloudSync(false);
+      if (document.visibilityState === "visible" && state.syncCode) {
+        cloudSync(false);
+        if (!streamSub) startStream();
+      }
     });
   }
 

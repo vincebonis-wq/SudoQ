@@ -100,5 +100,10 @@
     return res.ok;
   }
 
-  window.Sync = { createSpace, pull, push, check, provider: "firebase" };
+  // URL de streaming SSE (sans cache-buster) pour le temps réel via EventSource.
+  function streamUrl(code) {
+    return spaceUrl(code);
+  }
+
+  window.Sync = { createSpace, pull, push, check, streamUrl, provider: "firebase" };
 })();
