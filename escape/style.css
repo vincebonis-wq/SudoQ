@@ -186,3 +186,51 @@ body {
 .shake-screen { animation: quake .5s; }
 @keyframes quake { 0%,100%{transform:translate(0)} 20%{transform:translate(-6px,3px)} 40%{transform:translate(6px,-3px)} 60%{transform:translate(-4px,-2px)} 80%{transform:translate(4px,2px)} }
 .app-version { text-align: center; color: var(--text-dim); opacity: .55; font-size: 11px; margin-top: 22px; }
+
+/* =========================================================================
+ * Aventure RPG — « L'Expédition » : carte, vie, reliques, butin
+ * ========================================================================= */
+.strikes.hp-mini { justify-self: end; font-size: 14px; font-weight: 700; color: var(--red-2); }
+
+.adv { background: linear-gradient(160deg, var(--surface), var(--surface-2)); border: 1px solid rgba(148,163,184,.14); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow); }
+.adv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.adv-map { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.pip { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; background: rgba(148,163,184,.12); border: 2px solid transparent; flex: 0 0 auto; }
+.pip.done { background: rgba(52,211,153,.18); border-color: var(--green); color: var(--green); }
+.pip.cur { background: rgba(245,158,11,.2); border-color: var(--amber-2); box-shadow: 0 0 0 3px rgba(245,158,11,.18); animation: pipPulse 1.6s ease-in-out infinite; }
+.pip.todo { opacity: .55; }
+.pip.boss { font-size: 17px; }
+.pip.boss.cur { border-color: var(--red); box-shadow: 0 0 0 3px rgba(239,68,68,.22); }
+.pip-link { width: 14px; height: 3px; background: rgba(148,163,184,.2); flex: 0 0 auto; }
+.pip-link.done { background: var(--green); }
+@keyframes pipPulse { 0%,100%{ transform: scale(1) } 50%{ transform: scale(1.12) } }
+.hearts { display: flex; gap: 2px; font-size: 17px; flex: 0 0 auto; }
+.hearts .hp.empty { filter: grayscale(1) opacity(.6); }
+.hearts .hp { animation: none; }
+.adv-salle { display: flex; align-items: center; gap: 11px; margin-top: 11px; padding-top: 11px; border-top: 1px solid rgba(148,163,184,.14); }
+.adv-salle .as-ico { font-size: 26px; flex: 0 0 auto; }
+.adv-salle .as-txt { display: flex; flex-direction: column; gap: 2px; }
+.adv-salle .as-txt b { font-family: var(--display); font-size: 15px; }
+.adv-salle .as-txt span { font-size: 12px; color: var(--text-dim); line-height: 1.35; }
+.relics { display: flex; align-items: center; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.relics .rl-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; font-weight: 700; }
+.relic-chip { width: 30px; height: 30px; border-radius: 9px; background: rgba(124,58,237,.16); border: 1px solid rgba(168,85,247,.3); display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+.relic-chip.active { background: rgba(96,165,250,.18); border-color: var(--blue); box-shadow: 0 0 8px rgba(96,165,250,.4); }
+
+/* Butin */
+.loot { background: linear-gradient(160deg, rgba(124,58,237,.16), rgba(236,72,153,.12)); border: 1px solid rgba(168,85,247,.3); border-radius: var(--radius); padding: 18px 14px; box-shadow: var(--shadow); animation: rise .4s ease; }
+.loot-head { text-align: center; margin-bottom: 14px; }
+.loot-head .lh-ico { font-size: 34px; display: block; animation: bob 1.8s ease-in-out infinite; }
+.loot-head h2 { font-family: var(--display); font-size: 21px; margin: 4px 0 3px; }
+.loot-head p { font-size: 13px; color: var(--text-dim); }
+@keyframes bob { 0%,100%{ transform: translateY(0) rotate(-4deg) } 50%{ transform: translateY(-5px) rotate(4deg) } }
+.loot-cards { display: grid; gap: 10px; }
+.loot-card { display: flex; align-items: center; gap: 12px; text-align: left; padding: 13px 14px; border-radius: 14px; background: var(--surface); border: 2px solid transparent; box-shadow: var(--shadow); cursor: pointer; color: var(--text); font-family: var(--font); transition: transform .12s, border-color .15s; }
+.loot-card:not([disabled]):hover { border-color: var(--accent-2); }
+.loot-card:not([disabled]):active { transform: scale(.97); }
+.loot-card[disabled] { cursor: default; opacity: .92; }
+.loot-card .lc-ico { font-size: 28px; flex: 0 0 auto; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: rgba(124,58,237,.14); }
+.loot-card .lc-txt { display: flex; flex-direction: column; flex: 1; }
+.loot-card .lc-name { font-weight: 700; font-size: 15px; }
+.loot-card .lc-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; line-height: 1.35; }
+.loot-wait { text-align: center; font-size: 12.5px; color: var(--text-dim); margin-top: 12px; }

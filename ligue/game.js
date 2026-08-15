@@ -6,7 +6,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v3";
+  const APP_VERSION = "v4";
   const $ = (s) => document.querySelector(s);
   const AV = ["#7c3aed", "#ec4899"];
 
@@ -79,7 +79,7 @@
       `<div class="brow bhead"><span class="g">Jeu</span><span class="v">${escapeHtml(nm[0])}</span><span class="v">${escapeHtml(nm[1])}</span></div>` +
       brow("🧩", "SudoQ", `${s.completed[0]}/${s.completed[1]} niveaux · ${s.sudoqWins[0]}/${s.sudoqWins[1]} duels`, s.sudoqPts[0], s.sudoqPts[1]) +
       brow("🚢", "Bataille navale", `${s.nav[0]} – ${s.nav[1]} manches`, s.navPts[0], s.navPts[1]) +
-      brow("💣", "Désamorçage", `${s.defused} bombe(s) — coopératif`, s.escPts, s.escPts);
+      brow("💣", "Désamorçage", `${s.defused} salle(s) franchie(s) — coopératif`, s.escPts, s.escPts);
 
     // Niveau couple
     const xp = s.total[0] + s.total[1];

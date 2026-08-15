@@ -9,7 +9,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>Désamorçage · SudoQ</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=3" />
+    <link rel="stylesheet" href="style.css?v=4" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%A3%3C/text%3E%3C/svg%3E" />
     <link rel="manifest" href="../manifest.json" />
     <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
@@ -69,8 +69,14 @@
         </div>
         <div class="serie-mini" id="serie"></div>
 
-        <!-- Avant d'armer -->
+        <!-- En-tête aventure : carte des salles, vie du groupe, reliques -->
+        <div class="adv" id="adv" hidden></div>
+
+        <!-- Avant de lancer l'expédition -->
         <div id="pre" hidden></div>
+
+        <!-- Entre deux salles : choix d'une relique -->
+        <div id="loot" class="loot" hidden></div>
 
         <!-- Vue Démineur : la bombe -->
         <div id="bomb" class="bomb" hidden></div>
@@ -98,7 +104,7 @@
 
     <div class="toast" id="toast" hidden></div>
     <script src="../js/realtime.js?v=1"></script>
-    <script src="game.js?v=4"></script>
+    <script src="game.js?v=5"></script>
     <script>
       if ("serviceWorker" in navigator) {
         addEventListener("load", () => navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(() => {}));
