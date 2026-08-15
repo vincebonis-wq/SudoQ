@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v4";
+  const APP_VERSION = "v5";
   const FLEET = [
     { name: "Porte-avions", size: 5 },
     { name: "Croiseur", size: 4 },
@@ -108,6 +108,7 @@
   const sndHit = () => { noise(0.35, 0.2); tone(90, 0.35, "sawtooth", 0.12); };
   const sndSink = () => { noise(0.5, 0.22); [200, 150, 100].forEach((f, i) => setTimeout(() => tone(f, 0.25, "sawtooth", 0.12), i * 120)); };
   const sndWin = () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.18, "triangle", 0.1), i * 120));
+  const sndSonar = () => { tone(880, 0.16, "sine", 0.05, 1320); setTimeout(() => tone(660, 0.22, "sine", 0.04, 990), 90); };
 
   let toastTimer = null;
   function toast(msg, ms) { const el = $("#toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => (el.hidden = true), ms || 2200); }
@@ -347,6 +348,20 @@
     if (rd !== seenRound) { seenRound = rd; seenEnemy = new Set(); seenMine = new Set(); }
   }
 
+  /* ---------- Effets visuels ---------- */
+  let prevMyTurn = false;
+  function sonarPing() {
+    const area = $("#enemy-area"); if (!area) return;
+    let ping = area.querySelector(".sonar-ping");
+    if (!ping) { ping = document.createElement("span"); ping.className = "sonar-ping"; area.appendChild(ping); }
+    ping.classList.remove("go"); void ping.offsetWidth; ping.classList.add("go");
+  }
+  function recoil() {
+    const b = $("#enemy-board"); if (!b) return;
+    b.classList.remove("recoil"); void b.offsetWidth; b.classList.add("recoil");
+    setTimeout(() => { if (b) b.classList.remove("recoil"); }, 240);
+  }
+
   /* ---------- Cadrage / transitions d'écran ---------- */
   function focusBoard(which, smooth) {
     const eA = $("#enemy-area"), mA = $("#my-area");
@@ -386,7 +401,7 @@
       const [r, c] = parse(k), cell = at(enemy, r, c), res = myShots[k], isNew = !seenEnemy.has(k);
       if (oppSunk.has(k)) { cell.classList.add("sunk"); if (isNew) cell.classList.add("shake"); }
       else if (res === "hit") { cell.classList.add("hit"); if (isNew) cell.classList.add("new"); }
-      else if (res === "miss") cell.classList.add("miss");
+      else if (res === "miss") { cell.classList.add("miss"); if (isNew) cell.classList.add("new"); }
       if (res === "hit") myHits++;
       seenEnemy.add(k);
     });
@@ -401,7 +416,7 @@
       const [r, c] = parse(k), cell = at(mine, r, c), isNew = !seenMine.has(k);
       if (mySunk.has(k)) { cell.classList.add("sunk"); if (isNew) cell.classList.add("shake"); }
       else if (oppShots[k] === "hit") { cell.classList.add("hit"); if (isNew) cell.classList.add("new"); }
-      else if (oppShots[k] === "miss") cell.classList.add("miss");
+      else if (oppShots[k] === "miss") { cell.classList.add("miss"); if (isNew) cell.classList.add("new"); }
       if (oppShots[k] === "hit") oppHits++;
       seenMine.add(k);
     });
@@ -415,7 +430,7 @@
     if (me === null) { show("who"); renderWho(); return; }
     show("game"); renderSerie();
     const st = (navale && navale.status) || "setup";
-    if (st !== "playing" && st !== "finished") curFocus = null; // ré-armer le cadrage à l'entrée en bataille
+    if (st !== "playing" && st !== "finished") { curFocus = null; prevMyTurn = false; } // ré-armer cadrage + ping
     const myReady = !!(navale && navale.boards && navale.boards[me] && navale.boards[me].ready);
 
     if (st === "setup") {
@@ -433,6 +448,10 @@
       const myTurn = navale.turn === me;
       turnPill(myTurn ? "🎯 À toi de tirer !" : "⏳ Au tour de " + oppName(), myTurn ? "you" : "wait");
       renderBattle(myTurn);
+      // Ping sonar + son quand je récupère la main (signal clair « à toi de tirer »).
+      const justGotTurn = myTurn && !prevMyTurn;
+      prevMyTurn = myTurn;
+      if (justGotTurn && !watching) { sonarPing(); sndSonar(); }
       // Cadrer l'écran en cours : mon tir (flotte ennemie) quand c'est mon tour,
       // ma flotte quand j'attends/subis. Gelé juste après mon propre tir.
       if (!watching && Date.now() >= holdUntil) focusBoard(myTurn ? "enemy" : "mine", true);
@@ -469,7 +488,7 @@
     // navire coulé ?
     const sunkShip = hit ? oppShips.find((sh) => (sh || []).indexOf(k) !== -1 && sh.every((c) => shots[c] === "hit")) : null;
     const meta = {};
-    audio(); sndFire();
+    audio(); sndFire(); recoil();
     if (hit && total > 0 && hits >= total) {
       const sc = normScores(navale.scores); sc[me] = (sc[me] || 0) + 1;
       navale.status = "finished"; navale.winner = me; navale.scores = sc;

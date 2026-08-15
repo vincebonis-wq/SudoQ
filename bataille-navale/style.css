@@ -110,10 +110,18 @@ body {
 
 /* Zone de jeu avec coordonnées */
 .play-area {
+  position: relative;
   display: grid; grid-template-columns: 18px 1fr; grid-template-rows: 16px 1fr; gap: 3px;
   margin-bottom: 16px; scroll-margin-top: 78px; scroll-margin-bottom: 24px;
   border-radius: 14px; transition: box-shadow .35s ease, transform .35s ease, opacity .35s ease;
 }
+/* Ping sonar : anneau qui se propage quand c'est à moi de tirer */
+.sonar-ping {
+  position: absolute; left: 50%; top: 56%; width: 22px; height: 22px; margin: -11px 0 0 -11px;
+  border: 3px solid rgba(52,211,153,.75); border-radius: 50%; pointer-events: none; z-index: 6; opacity: 0;
+}
+.sonar-ping.go { animation: sonar 1s ease-out; }
+@keyframes sonar { 0% { opacity: .85; transform: scale(.2); } 70% { opacity: .35; } 100% { opacity: 0; transform: scale(12); border-width: 1px; } }
 /* Écran en cours : la zone active ressort, l'autre recule en retrait (uniquement si une zone est active) */
 #battle:has(.play-area.active) .play-area:not(.active) { opacity: .6; transform: scale(.985); }
 #battle .play-area.active { box-shadow: 0 0 0 2px rgba(52,211,153,.35), 0 14px 40px rgba(0,0,0,.4); }
@@ -201,6 +209,31 @@ body.light .cell { background: rgba(255,255,255,.28); }
 
 .board.disabled { filter: grayscale(.35) brightness(.82); pointer-events: none; }
 .board.aim .cell:not(.hit):not(.miss):not(.sunk) { cursor: crosshair; }
+/* Réticule de visée : viseur qui se cale sur la case survolée / pressée */
+.board.aim:not(.disabled) .cell:not(.hit):not(.miss):not(.sunk):hover::before,
+.board.aim:not(.disabled) .cell:not(.hit):not(.miss):not(.sunk):active::before {
+  content: ""; position: absolute; inset: 16%; z-index: 3; border-radius: 50%;
+  border: 1.5px solid rgba(52,211,153,.9);
+  box-shadow: 0 0 7px rgba(52,211,153,.55), inset 0 0 5px rgba(52,211,153,.35);
+  animation: reticle .22s ease; pointer-events: none;
+}
+.board.aim:not(.disabled) .cell:not(.hit):not(.miss):not(.sunk):hover::after,
+.board.aim:not(.disabled) .cell:not(.hit):not(.miss):not(.sunk):active::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  background:
+    linear-gradient(rgba(52,211,153,.85), rgba(52,211,153,.85)) center/1.5px 42% no-repeat,
+    linear-gradient(rgba(52,211,153,.85), rgba(52,211,153,.85)) center/42% 1.5px no-repeat;
+  opacity: .9;
+}
+@keyframes reticle { from { transform: scale(1.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+/* Recul du canon au tir */
+.board.recoil { animation: recoil .2s ease; }
+@keyframes recoil { 0% { transform: scale(1); } 30% { transform: scale(.982); } 100% { transform: scale(1); } }
+/* Onde de choc à l'eau sur un tir manqué frais (parité avec le halo des touchés) */
+.cell.miss.new::before {
+  content: ""; position: absolute; inset: 0; border-radius: 4px; z-index: 2; pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(147,197,253,.85); animation: ring .55s ease-out forwards;
+}
 
 /* Titres de plateau */
 .board-title { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--text-dim); margin: 2px 4px 8px; letter-spacing: .3px; }
