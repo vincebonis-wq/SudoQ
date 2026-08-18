@@ -13,7 +13,7 @@
  *
  * Bump CACHE à chaque déploiement pour purger l'ancien cache.
  * ========================================================================= */
-const CACHE = "sudoq-v18";
+const CACHE = "sudoq-v19";
 const CORE = [
   "./",
   "./index.html",

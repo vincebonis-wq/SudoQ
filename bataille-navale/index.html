@@ -25,6 +25,7 @@
           <span class="name">Bataille <span>navale</span></span>
         </a>
         <div class="topbar-right">
+          <button class="icon-btn" id="btn-solo-top" title="S'entraîner contre l'ordinateur (solo)">🤖</button>
           <button class="icon-btn" id="btn-sync" title="Synchro"><span id="sync-dot" class="sync-dot off">●</span></button>
           <button class="icon-btn" id="btn-theme" title="Thème">🌙</button>
         </div>
@@ -124,7 +125,7 @@
     <div class="toast" id="toast" hidden></div>
 
     <script src="../js/realtime.js?v=1"></script>
-    <script src="game.js?v=7"></script>
+    <script src="game.js?v=8"></script>
     <script>
       if ("serviceWorker" in navigator) {
         addEventListener("load", () => navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(() => {}));

@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v6";
+  const APP_VERSION = "v7";
   const FLEET = [
     { name: "Porte-avions", size: 5 },
     { name: "Croiseur", size: 4 },
@@ -434,6 +434,7 @@
   /* ---------- Rendu principal ---------- */
   function render() {
     couple = getCouple();
+    const bSoloTop = $("#btn-solo-top"); if (bSoloTop) bSoloTop.hidden = solo; // en solo, le bandeau « Quitter » suffit
     if (!solo && !couple.code) { show("gate"); renderSoloCtas(); return; }
     if (!solo && me === null) { show("who"); renderWho(); renderSoloCtas(); return; }
     show("game"); renderSerie();
@@ -577,9 +578,20 @@
   }
   function botReset() { botState = { tried: new Set(), queue: [] }; }
   function renderSoloCtas() {
-    const g = $("#btn-solo-gate"), w = $("#btn-solo-who");
+    const g = $("#btn-solo-gate"), w = $("#btn-solo-who"), t = $("#btn-solo-top");
     if (g) g.onclick = startSolo;
     if (w) w.onclick = startSolo;
+    if (t) t.onclick = confirmSolo;
+  }
+  // Depuis une partie couple en cours : bascule vers le solo (la partie avec
+  // Babe reste sauvegardée côté serveur et revient dès qu'on quitte le solo).
+  function confirmSolo() {
+    const inGame = !solo && navale && (navale.status === "playing" || navale.status === "setup" || navale.status === "finished");
+    if (inGame && couple.code) {
+      const ok = confirm("Passer en entraînement solo ? Ta partie avec " + oppName() + " reste sauvegardée et tu la retrouveras en quittant le solo.");
+      if (!ok) return;
+    }
+    startSolo();
   }
   function startSolo() {
     solo = true; me = 0;
