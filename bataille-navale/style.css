@@ -301,3 +301,11 @@ body.light .toast { background: #14213a; }
 @keyframes fall { to { transform: translateY(460px) rotate(600deg); opacity: 0; } }
 
 .app-version { text-align: center; color: var(--text-dim); opacity: .55; font-size: 11px; margin-top: 22px; }
+
+/* ---------- Mode entraînement contre l'ordinateur ---------- */
+.solo-cta { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(148,163,184,.16); display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.solo-cta span { font-size: 12.5px; color: var(--text-dim); }
+.solo-cta .btn { width: 100%; }
+.solo-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding: 8px 8px 8px 14px; border-radius: 999px; background: linear-gradient(135deg, rgba(96,165,250,.16), rgba(52,211,153,.14)); border: 1px solid rgba(96,165,250,.3); font-size: 12.5px; font-weight: 600; color: var(--text); }
+.solo-bar span { line-height: 1.25; }
+.solo-bar .btn { flex: 0 0 auto; padding: 7px 14px; }

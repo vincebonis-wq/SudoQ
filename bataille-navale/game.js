@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v5";
+  const APP_VERSION = "v6";
   const FLEET = [
     { name: "Porte-avions", size: 5 },
     { name: "Croiseur", size: 4 },
@@ -70,6 +70,10 @@
   let watching = false;     // je regarde une attaque adverse en cours
   let attackTimer = null;   // fin de la séquence "sous attaque"
   let holdUntil = 0;        // gèle le cadrage un instant (ex. après mon propre tir)
+  // Mode entraînement hors-ligne contre l'ordinateur (rien n'est enregistré)
+  let solo = false;
+  let botState = { tried: new Set(), queue: [] };
+  let botTimer = null;
 
   /* ---------- Utils ---------- */
   const key = (r, c) => r + "," + c;
@@ -77,7 +81,10 @@
   function normScores(s) { const o = { 0: 0, 1: 0 }; if (s) { o[0] = s[0] || 0; o[1] = s[1] || 0; } return o; }
   function shipsOf(p) { const b = navale && navale.boards && navale.boards[p]; return (b && b.ships) || []; }
   function shotsOf(p) { return (navale && navale.shots && navale.shots[p]) || {}; }
-  function names() { const p = couple.players && couple.players.length === 2 ? couple.players : ["Joueur 1", "Joueur 2"]; return p; }
+  function names() {
+    if (solo) { const mine = (couple.players && couple.players[0]) || "Toi"; return [mine, "Ordi 🤖"]; }
+    const p = couple.players && couple.players.length === 2 ? couple.players : ["Joueur 1", "Joueur 2"]; return p;
+  }
   const oppName = () => names()[1 - me];
   function shipName(size) { return size === 5 ? "Porte-avions" : size === 4 ? "Croiseur" : size === 2 ? "Torpilleur" : "navire"; }
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
@@ -168,6 +175,7 @@
   function clearSetup() { localSetup.ships = []; localSetup.active = 0; persistSetup(); paintSetup(); renderFleet(); }
 
   function persistSetup() {
+    if (solo) return; // l'entraînement est éphémère : ne pas polluer le cache réel
     try { localStorage.setItem("navale.setup", JSON.stringify({ code: couple.code, me, round: (navale && navale.round) || 1, ships: localSetup.ships })); } catch (e) {}
   }
   function restoreSetup() {
@@ -426,9 +434,10 @@
   /* ---------- Rendu principal ---------- */
   function render() {
     couple = getCouple();
-    if (!couple.code) { show("gate"); return; }
-    if (me === null) { show("who"); renderWho(); return; }
+    if (!solo && !couple.code) { show("gate"); renderSoloCtas(); return; }
+    if (!solo && me === null) { show("who"); renderWho(); renderSoloCtas(); return; }
     show("game"); renderSerie();
+    $("#solo-bar").hidden = !solo;
     const st = (navale && navale.status) || "setup";
     if (st !== "playing" && st !== "finished") { curFocus = null; prevMyTurn = false; } // ré-armer cadrage + ping
     const myReady = !!(navale && navale.boards && navale.boards[me] && navale.boards[me].ready);
@@ -467,6 +476,7 @@
     const board = { ships: localSetup.ships.map((s) => s.cells), ready: true };
     if (!navale) navale = { status: "setup", turn: 0, winner: null, round: 1, scores: { 0: 0, 1: 0 }, boards: {}, shots: {} };
     navale.boards = navale.boards || {}; navale.boards[me] = board;
+    if (solo) { navale.status = "playing"; navale.turn = 0; render(); toast("⚔️ En bataille contre l'ordinateur !"); return; }
     render();
     try {
       await store().patch("", { status: navale.status || "setup", turn: navale.turn || 0, round: navale.round || 1, scores: normScores(navale.scores) });
@@ -499,6 +509,7 @@
     else { navale.turn = 1 - me; meta.turn = 1 - me; setTimeout(sndMiss, 100); toast("💧 Manqué"); vibrate(20); }
     holdUntil = Date.now() + 1400; // rester sur la flotte ennemie pour voir le résultat de mon tir
     render();
+    if (solo) { if (navale.status === "playing" && navale.turn !== me) scheduleBot(); return; }
     try {
       await store().put("/shots/" + me, shots);
       if (Object.keys(meta).length) await store().patch("", meta);
@@ -509,6 +520,13 @@
   async function rematch() {
     const round = ((navale && navale.round) || 1) + 1;
     const scores = normScores(navale && navale.scores);
+    if (solo) {
+      navale = { status: "setup", turn: 0, winner: null, round, scores, boards: { 1: { ships: randomFleet() || [], ready: true } }, shots: {} };
+      localSetup = { ships: [], orientation: localSetup.orientation, active: 0 };
+      botReset(); seenEnemy = new Set(); seenMine = new Set();
+      $("#end-modal").hidden = true; endShownForRound = -1; render();
+      return;
+    }
     navale = { status: "setup", turn: 0, winner: null, round, scores, boards: {}, shots: {} };
     localSetup = { ships: [], orientation: localSetup.orientation, active: 0 };
     persistSetup(); $("#end-modal").hidden = true; endShownForRound = -1;
@@ -535,10 +553,107 @@
     for (let i = 0; i < 40; i++) { const c = document.createElement("i"); c.style.left = Math.random() * 100 + "%"; c.style.background = cols[Math.floor(Math.random() * cols.length)]; c.style.animationDuration = 1.4 + Math.random() * 1.5 + "s"; c.style.animationDelay = Math.random() * 0.3 + "s"; box.appendChild(c); }
   }
 
+  /* ---------- Entraînement contre l'ordinateur (hors-ligne) ---------- */
+  // Génère une flotte complète valide (règle d'écart d'1 case) sans dépendre
+  // de localSetup — utilisée pour la flotte du bot.
+  function randomFleet() {
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const ships = [], halo = new Set(); let ok = true;
+      for (let i = 0; i < FLEET.length; i++) {
+        let placed = null;
+        for (let t = 0; t < 400 && !placed; t++) {
+          const orient = Math.random() < 0.5 ? "h" : "v";
+          const r = Math.floor(Math.random() * 10), c = Math.floor(Math.random() * 10);
+          const cells = cellsFor(r, c, FLEET[i].size, orient);
+          if (cells && cells.every((k) => !halo.has(k))) placed = cells;
+        }
+        if (!placed) { ok = false; break; }
+        ships.push(placed);
+        placed.forEach((k) => { const [r, c] = parse(k); for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (rr >= 0 && rr < 10 && cc >= 0 && cc < 10) halo.add(key(rr, cc)); } });
+      }
+      if (ok) return ships;
+    }
+    return null;
+  }
+  function botReset() { botState = { tried: new Set(), queue: [] }; }
+  function renderSoloCtas() {
+    const g = $("#btn-solo-gate"), w = $("#btn-solo-who");
+    if (g) g.onclick = startSolo;
+    if (w) w.onclick = startSolo;
+  }
+  function startSolo() {
+    solo = true; me = 0;
+    stopPolling(); stopStream();
+    if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+    navale = { status: "setup", turn: 0, winner: null, round: 1, scores: { 0: 0, 1: 0 }, boards: { 1: { ships: randomFleet() || [], ready: true } }, shots: {} };
+    localSetup = { ships: [], orientation: localSetup.orientation || "h", active: 0 };
+    botReset();
+    seenEnemy = new Set(); seenMine = new Set(); seenRound = -1;
+    endShownForRound = -1; curFocus = null; prevMyTurn = false; watching = false;
+    $("#end-modal").hidden = true;
+    render();
+    toast("🤖 Entraînement — place ta flotte !", 2600);
+  }
+  function exitSolo() {
+    solo = false;
+    if (botTimer) { clearTimeout(botTimer); botTimer = null; }
+    navale = null; endShownForRound = -1; $("#end-modal").hidden = true; $("#solo-bar").hidden = true;
+    couple = getCouple();
+    let m = localStorage.getItem("navale.me"); me = m === null ? null : parseInt(m, 10);
+    if (me !== null) restoreSetup();
+    render();
+    if (couple.code && me !== null) { pull(); startPolling(); startStream(); }
+  }
+  function scheduleBot() { if (botTimer) clearTimeout(botTimer); botTimer = setTimeout(botPlay, 1500); }
+  function botPickTarget() {
+    // 1) chasse ciblée : cases adjacentes à un touché non coulé
+    while (botState.queue.length) { const k = botState.queue.shift(); if (!botState.tried.has(k)) return k; }
+    // 2) recherche : case aléatoire non essayée, en damier (efficace)
+    const cands = [];
+    for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) { const k = key(r, c); if (!botState.tried.has(k)) cands.push({ k, par: (r + c) % 2 }); }
+    if (!cands.length) return null;
+    const even = cands.filter((x) => x.par === 0), pool = even.length ? even : cands;
+    return pool[Math.floor(Math.random() * pool.length)].k;
+  }
+  function botPlay() {
+    botTimer = null;
+    if (!solo || !navale || navale.status !== "playing" || navale.turn === me) return;
+    const k = botPickTarget(); if (!k) return;
+    const myShips = shipsOf(me); // flotte du joueur (plateau 0)
+    const hit = myShips.some((sh) => (sh || []).indexOf(k) !== -1);
+    const shots = Object.assign({}, shotsOf(1 - me));
+    shots[k] = hit ? "hit" : "miss";
+    navale.shots = navale.shots || {}; navale.shots[1 - me] = shots;
+    botState.tried.add(k);
+    audio(); sndFire();
+    const total = myShips.reduce((n, sh) => n + (sh ? sh.length : 0), 0);
+    const botHits = Object.keys(shots).filter((x) => shots[x] === "hit").length;
+    const sunkShip = hit ? myShips.find((sh) => (sh || []).indexOf(k) !== -1 && sh.every((c) => shots[c] === "hit")) : null;
+    // IA : sur un touché non coulé, viser les cases orthogonales ; sur un coulé, repartir en recherche
+    if (hit && !sunkShip) {
+      const [r, c] = parse(k);
+      [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].forEach(([rr, cc]) => {
+        if (rr >= 0 && rr < 10 && cc >= 0 && cc < 10) { const nk = key(rr, cc); if (!botState.tried.has(nk) && botState.queue.indexOf(nk) === -1) botState.queue.push(nk); }
+      });
+    } else if (sunkShip) { botState.queue = []; }
+    triggerIncomingAttack(); // je vois l'impact sur ma flotte, puis retour à mon écran
+    if (hit && total > 0 && botHits >= total) {
+      navale.status = "finished"; navale.winner = 1 - me;
+      const sc = normScores(navale.scores); sc[1 - me] = (sc[1 - me] || 0) + 1; navale.scores = sc; // série locale uniquement
+      setTimeout(sndSink, 200); vibrate([40, 60, 120]); render(); return;
+    }
+    if (sunkShip) { setTimeout(sndSink, 200); toast("🤖 L'ordi coule ton " + shipName(sunkShip.length) + " !", 2600); vibrate([50, 40, 90]); }
+    else if (hit) { setTimeout(sndHit, 200); toast("🤖 L'ordi touche !"); vibrate(60); }
+    else { navale.turn = me; setTimeout(sndMiss, 200); }
+    render();
+    if (navale.status === "playing" && navale.turn !== me) scheduleBot(); // l'ordi rejoue après un touché
+  }
+
   /* ---------- Synchro ---------- */
   let lastErr = false;
   function setDot(s) { $("#sync-dot").className = "sync-dot " + s; }
   async function pull() {
+    if (solo) return; // l'entraînement est 100% local
     if (!couple.code || me === null) { render(); return; }
     if (drag) return; // ne pas rerender pendant un glisser
     setDot("syncing");
@@ -568,6 +683,7 @@
   }
   function startPolling() {
     stopPolling();
+    if (solo) return;
     const tick = () => {
       if (document.visibilityState === "visible" && !drag) pull();
       pollId = setTimeout(tick, pollDelay());
@@ -581,7 +697,7 @@
   function schedulePull() { if (pullTimer || drag) return; pullTimer = setTimeout(() => { pullTimer = null; pull(); }, 60); }
   function startStream() {
     stopStream();
-    if (!couple.code || me === null || !window.Realtime) return;
+    if (solo || !couple.code || me === null || !window.Realtime) return;
     streamSub = window.Realtime.subscribe(base() + ".json", {
       onChange: () => { streamHealthy = true; schedulePull(); },
       onError: () => {
@@ -620,10 +736,12 @@
     $("#btn-clear").onclick = clearSetup;
     $("#btn-ready").onclick = ready;
     $("#btn-rematch").onclick = rematch;
+    const exitBtn = $("#btn-exit-solo"); if (exitBtn) exitBtn.onclick = exitSolo;
+    renderSoloCtas();
     restoreSetup(); render();
     if (couple.code && me !== null) { pull(); startPolling(); startStream(); }
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") { pull(); if (!streamSub) startStream(); }
+      if (!solo && document.visibilityState === "visible") { pull(); if (!streamSub) startStream(); }
     });
   }
 

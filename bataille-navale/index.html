@@ -9,7 +9,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>Bataille navale · SudoQ</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css?v=5" />
+    <link rel="stylesheet" href="style.css?v=6" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%A2%3C/text%3E%3C/svg%3E" />
     <link rel="manifest" href="../manifest.json" />
     <link rel="apple-touch-icon" href="../icons/apple-touch-icon.png" />
@@ -36,6 +36,10 @@
         <p>La bataille navale utilise le même espace que SudoQ. Ouvre d'abord
         SudoQ, crée (ou rejoins) votre espace de couple, puis reviens ici.</p>
         <a class="btn btn-primary" href="../index.html">Ouvrir SudoQ</a>
+        <div class="solo-cta">
+          <span>Envie de jouer tout de suite&nbsp;?</span>
+          <button class="btn btn-outline" id="btn-solo-gate">🤖 S'entraîner contre l'ordinateur</button>
+        </div>
       </div>
 
       <!-- Choix du joueur -->
@@ -44,10 +48,18 @@
         <h2>Qui es-tu ?</h2>
         <p>Choisis ton profil (chacun le sien sur son téléphone).</p>
         <div class="who-btns" id="who-btns"></div>
+        <div class="solo-cta">
+          <span>ou joue en solo</span>
+          <button class="btn btn-outline" id="btn-solo-who">🤖 S'entraîner contre l'ordinateur</button>
+        </div>
       </div>
 
       <!-- Jeu -->
       <main id="game" hidden>
+        <div class="solo-bar" id="solo-bar" hidden>
+          <span>🤖 Entraînement hors-ligne — rien n'est enregistré</span>
+          <button class="btn btn-ghost btn-sm" id="btn-exit-solo">Quitter</button>
+        </div>
         <div class="status">
           <h1 id="phase-title">Place ta flotte</h1>
           <div class="turn-pill wait" id="turn-pill">—</div>
@@ -112,7 +124,7 @@
     <div class="toast" id="toast" hidden></div>
 
     <script src="../js/realtime.js?v=1"></script>
-    <script src="game.js?v=6"></script>
+    <script src="game.js?v=7"></script>
     <script>
       if ("serviceWorker" in navigator) {
         addEventListener("load", () => navigator.serviceWorker.register("../sw.js", { scope: "../" }).catch(() => {}));
