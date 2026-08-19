@@ -8,7 +8,7 @@
   "use strict";
 
   const DB = "https://sudoq-b7925-default-rtdb.europe-west1.firebasedatabase.app";
-  const APP_VERSION = "v7";
+  const APP_VERSION = "v8";
   const FLEET = [
     { name: "Porte-avions", size: 5 },
     { name: "Croiseur", size: 4 },
@@ -576,7 +576,12 @@
     }
     return null;
   }
-  function botReset() { botState = { tried: new Set(), queue: [] }; }
+  function botReset() { botState = { tried: new Set(), water: new Set(), chain: [] }; }
+  const inBounds = (r, c) => r >= 0 && r < 10 && c >= 0 && c < 10;
+  function botFireable(k) { return !botState.tried.has(k) && !botState.water.has(k); }
+  function botOrtho(k) { const [r, c] = parse(k); return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([rr, cc]) => inBounds(rr, cc)).map(([rr, cc]) => key(rr, cc)); }
+  function botDiagonals(k) { const [r, c] = parse(k); return [[r - 1, c - 1], [r - 1, c + 1], [r + 1, c - 1], [r + 1, c + 1]].filter(([rr, cc]) => inBounds(rr, cc)).map(([rr, cc]) => key(rr, cc)); }
+  function botHalo(cells) { const out = new Set(); cells.forEach((k) => { const [r, c] = parse(k); for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) { const rr = r + dr, cc = c + dc; if (inBounds(rr, cc)) out.add(key(rr, cc)); } }); return out; }
   function renderSoloCtas() {
     const g = $("#btn-solo-gate"), w = $("#btn-solo-who"), t = $("#btn-solo-top");
     if (g) g.onclick = startSolo;
@@ -617,15 +622,47 @@
     if (couple.code && me !== null) { pull(); startPolling(); startStream(); }
   }
   function scheduleBot() { if (botTimer) clearTimeout(botTimer); botTimer = setTimeout(botPlay, 1500); }
+  // Candidats de ciblage déduits de la chaîne de touchés en cours.
+  function botTargetCandidates() {
+    const chain = botState.chain;
+    if (!chain.length) return [];
+    if (chain.length === 1) return botOrtho(chain[0]).filter(botFireable); // orientation inconnue
+    // ≥ 2 touchés alignés : on prolonge UNIQUEMENT la ligne (les cases
+    // perpendiculaires sont forcément de l'eau — règle d'écart d'1 case).
+    const coords = chain.map(parse);
+    const horizontal = coords.every(([r]) => r === coords[0][0]);
+    let cands = [];
+    if (horizontal) {
+      const r = coords[0][0], cs = coords.map((x) => x[1]).sort((a, b) => a - b);
+      cands = [key(r, cs[0] - 1), key(r, cs[cs.length - 1] + 1)];
+    } else {
+      const c = coords[0][1], rs = coords.map((x) => x[0]).sort((a, b) => a - b);
+      cands = [key(rs[0] - 1, c), key(rs[rs.length - 1] + 1, c)];
+    }
+    return cands.filter((k) => { const [r, c] = parse(k); return inBounds(r, c) && botFireable(k); });
+  }
+  // Met à jour la connaissance du bot après un tir (règle d'écart d'1 case).
+  function botLearn(k, hit, sunkShip) {
+    if (!hit) return;
+    // les diagonales d'un touché sont TOUJOURS de l'eau → jamais de tir dessus
+    botDiagonals(k).forEach((d) => botState.water.add(d));
+    if (sunkShip) {
+      // navire coulé : tout son pourtour (halo 8 voisins) est de l'eau ; retour en recherche
+      botHalo(sunkShip).forEach((d) => { if ((sunkShip || []).indexOf(d) === -1) botState.water.add(d); });
+      botState.chain = [];
+    } else {
+      botState.chain.push(k);
+    }
+  }
   function botPickTarget() {
-    // 1) chasse ciblée : cases adjacentes à un touché non coulé
-    while (botState.queue.length) { const k = botState.queue.shift(); if (!botState.tried.has(k)) return k; }
-    // 2) recherche : case aléatoire non essayée, en damier (efficace)
-    const cands = [];
-    for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) { const k = key(r, c); if (!botState.tried.has(k)) cands.push({ k, par: (r + c) % 2 }); }
-    if (!cands.length) return null;
-    const even = cands.filter((x) => x.par === 0), pool = even.length ? even : cands;
-    return pool[Math.floor(Math.random() * pool.length)].k;
+    // 1) ciblage : prolonge la chaîne de touchés
+    const t = botTargetCandidates();
+    if (t.length) return t[Math.floor(Math.random() * t.length)];
+    // 2) recherche : case en damier, jamais une case connue « eau »
+    const all = [], even = [];
+    for (let r = 0; r < 10; r++) for (let c = 0; c < 10; c++) { const k = key(r, c); if (botFireable(k)) { all.push(k); if ((r + c) % 2 === 0) even.push(k); } }
+    const pool = even.length ? even : all;
+    return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   }
   function botPlay() {
     botTimer = null;
@@ -641,13 +678,7 @@
     const total = myShips.reduce((n, sh) => n + (sh ? sh.length : 0), 0);
     const botHits = Object.keys(shots).filter((x) => shots[x] === "hit").length;
     const sunkShip = hit ? myShips.find((sh) => (sh || []).indexOf(k) !== -1 && sh.every((c) => shots[c] === "hit")) : null;
-    // IA : sur un touché non coulé, viser les cases orthogonales ; sur un coulé, repartir en recherche
-    if (hit && !sunkShip) {
-      const [r, c] = parse(k);
-      [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].forEach(([rr, cc]) => {
-        if (rr >= 0 && rr < 10 && cc >= 0 && cc < 10) { const nk = key(rr, cc); if (!botState.tried.has(nk) && botState.queue.indexOf(nk) === -1) botState.queue.push(nk); }
-      });
-    } else if (sunkShip) { botState.queue = []; }
+    botLearn(k, hit, sunkShip);
     triggerIncomingAttack(); // je vois l'impact sur ma flotte, puis retour à mon écran
     if (hit && total > 0 && botHits >= total) {
       navale.status = "finished"; navale.winner = 1 - me;
@@ -757,6 +788,30 @@
     });
   }
 
-  window.__navale = { cellsFor, canPlace, FLEET, occupiedHalo, getSetup: () => localSetup };
+  // Hook de test : simule une partie complète du bot contre une flotte donnée,
+  // en réutilisant l'IA réelle (ciblage + apprentissage). Renvoie des métriques.
+  function simBot(playerShips) {
+    const savedSolo = solo, savedNav = navale;
+    solo = true; me = 0;
+    navale = { status: "playing", turn: 1, winner: null, round: 1, scores: { 0: 0, 1: 0 }, boards: { 0: { ships: playerShips, ready: true } }, shots: { 0: {}, 1: {} } };
+    botReset();
+    const total = playerShips.reduce((n, sh) => n + sh.length, 0);
+    let shots = 0, badDiagFires = 0, guard = 0;
+    const shotsMap = navale.shots[1];
+    while (guard++ < 300) {
+      const k = botPickTarget(); if (!k) break;
+      // invariant : ne jamais tirer en diagonale d'un touché déjà connu
+      if (botDiagonals(k).some((d) => shotsMap[d] === "hit")) badDiagFires++;
+      const hit = playerShips.some((sh) => sh.indexOf(k) !== -1);
+      shotsMap[k] = hit ? "hit" : "miss"; botState.tried.add(k); shots++;
+      const sunkShip = hit ? playerShips.find((sh) => sh.indexOf(k) !== -1 && sh.every((c) => shotsMap[c] === "hit")) : null;
+      botLearn(k, hit, sunkShip);
+      const botHits = Object.keys(shotsMap).filter((x) => shotsMap[x] === "hit").length;
+      if (botHits >= total) break;
+    }
+    solo = savedSolo; navale = savedNav; botReset();
+    return { shots, total, badDiagFires };
+  }
+  window.__navale = { cellsFor, canPlace, FLEET, occupiedHalo, getSetup: () => localSetup, simBot, randomFleet };
   init();
 })();
